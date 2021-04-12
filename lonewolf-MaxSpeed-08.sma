@@ -174,10 +174,17 @@ public client_PostThink(id)
   }
   else if (entity_get_int(id, EV_INT_waterlevel))
   {
-    //~ client_print(id, print_chat, "waterlevel: %d", entity_get_int(id, EV_INT_waterlevel));
-    
-    disable_acceleration = (noaccel_flags & NOACCEL_SWIM);
-    player_maxspeed      = get_pcvar_float(cvar_swimspeed);
+    if (get_user_button(id) & IN_JUMP)
+    {
+      //~ client_print(id, print_chat, "waterlevel: %d", entity_get_int(id, EV_INT_waterlevel));
+      
+      disable_acceleration = (noaccel_flags & NOACCEL_SWIM);
+      player_maxspeed      = get_pcvar_float(cvar_swimspeed);
+    }
+    else
+    {
+      disable_acceleration = 0;
+    }
   }
   
   if (disable_acceleration && (user_oldspeed[id] > 0.0))
