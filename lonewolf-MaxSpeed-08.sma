@@ -6,7 +6,7 @@
 #include <xs>
 
 #define PLUGIN  "EnhancedMultiJump"
-#define VERSION "0.7"
+#define VERSION "0.8"
 #define AUTHOR  "lonewolf"
 
 new cvar_enabled;
