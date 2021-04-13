@@ -3,14 +3,16 @@
 #include <amxmodx>
 #include <amxmisc>
 #include <engine>
+#include <fakemeta>
 #include <xs>
 
-#define PLUGIN  "EnhancedMultiJump"
-#define VERSION "0.8"
+#define PLUGIN  "MaxSpeed"
+#define VERSION "0.9"
 #define AUTHOR  "lonewolf"
 
 new cvar_enabled;
 new cvar_maxspeed;
+new cvar_surfspeed;
 new cvar_duckspeed;
 new cvar_swimspeed;
 new cvar_debug;
@@ -18,6 +20,10 @@ new cvar_noaccel;
 
 new bool:enabled;
 new Float:maxspeed;
+new Float:surfspeed;
+new Float:duckspeed;
+new Float:swimspeed;
+
 new debug_is_enabled;
 new noaccel_flags;
 
@@ -30,23 +36,32 @@ new bool:user_enabled_speed[33];
 enum
 {
   NOACCEL_AIR  = 1,
-  NOACCEL_SWIM = 2  
+  NOACCEL_SWIM = 2,
+  NOACCEL_SURF = 4
 };
 
 public plugin_init()
 {
-  register_plugin("MaxSpeed","0.7","lonewolf");
+  register_plugin(PLUGIN, VERSION, AUTHOR);
   
   cvar_enabled   = create_cvar("amx_maxspeed_enabled",   "1",   _, "<0/1> Disable/Enable MaxSpeed Plugin");
   cvar_maxspeed  = create_cvar("amx_maxspeed",           "400", _, "<0-2000> Maximum airspeed");
+  cvar_surfspeed = create_cvar("amx_maxspeed_surfspeed", "2000", _,"<0-2000> Maximum speed while surfing");
   cvar_duckspeed = create_cvar("amx_maxspeed_duckspeed", "300", _, "<0-2000> Maximum speed after double-ducking");
   cvar_swimspeed = create_cvar("amx_maxspeed_swimspeed", "400", _, "<0-2000> Maximum speed on water");
   cvar_debug     = create_cvar("amx_maxspeed_debug",     "0",   _, "<0/1> Enables /speed command");
-  cvar_noaccel   = create_cvar("amx_maxspeed_noaccel",   "0",   _, "<0-3> Summation: 1-Airstrafe noaccel, 2-Swim noaccel");
+  cvar_noaccel   = create_cvar("amx_maxspeed_noaccel",   "0",   _, "<0-7> Bitsum: 1-Airstrafe noaccel, 2-Swim noaccel, 4-Surf noaccel");
+  
+  bind_pcvar_num(cvar_enabled,     enabled);
+  bind_pcvar_num(cvar_debug,       debug_is_enabled);
+  bind_pcvar_num(cvar_noaccel,     noaccel_flags);
+  bind_pcvar_float(cvar_maxspeed,  maxspeed);
+  bind_pcvar_float(cvar_surfspeed, surfspeed);
+  bind_pcvar_float(cvar_duckspeed, duckspeed);
+  bind_pcvar_float(cvar_swimspeed, swimspeed);
   
   register_clcmd("say /speed", "handle_speed");
   
-  set_task_ex(1.0, "task_update", 5125, _, _, .flags = SetTask_Repeat);
 }
 
 public client_connect(id)
@@ -63,6 +78,7 @@ public handle_speed(id)
     client_print(id, print_chat, "Maxspeed plugin speed %s.", user_enabled_speed[id] ? "enabled" : "disabled");
   }
 }
+
 
 public client_cmdStart(id)
 {
@@ -99,15 +115,6 @@ public client_cmdStart(id)
 }
 
 
-public task_update(id)
-{
-  enabled          = bool:get_pcvar_num(cvar_enabled);
-  maxspeed         = get_pcvar_float(cvar_maxspeed);
-  debug_is_enabled = get_pcvar_num(cvar_debug);
-  noaccel_flags    = get_pcvar_num(cvar_noaccel);
-}
-
-
 public client_PostThink(id)
 {
   if (!is_user_connected(id) || !enabled)
@@ -115,11 +122,8 @@ public client_PostThink(id)
     return PLUGIN_CONTINUE;
   }
   
-  if (!is_user_alive(id))
-  {
-    new Float:velocity[3];
-    new Float:speed;
-    
+  if (!is_user_alive(id) && debug_is_enabled && (user_enabled_speed[id] || is_user_admin(id)))
+  {    
     new target = id;
     
     target = entity_get_int(id, EV_INT_iuser2);
@@ -128,7 +132,10 @@ public client_PostThink(id)
     {
       return PLUGIN_CONTINUE;
     }
-      
+    
+    new Float:velocity[3];
+    new Float:speed;
+    
     entity_get_vector(target, EV_VEC_velocity, velocity);
     speed = xs_vec_len_2d(velocity);
     
@@ -151,16 +158,7 @@ public client_PostThink(id)
   new disable_acceleration  = noaccel_flags & NOACCEL_AIR;
   
   just_double_ducked[id] = false;
-  
-  /**
-  * 0 - Not in water
-  * 1 - Waiding
-  * 2 - Mostly submerged
-  * 3 - Completely submerged
-  *
-  * Type: integer
-  */
-  
+    
   new Float:velocity[3];
   new Float:speed;
   
@@ -169,22 +167,32 @@ public client_PostThink(id)
   
   if (player_ducked)
   {
-    player_maxspeed   = get_pcvar_float(cvar_duckspeed);
+    player_maxspeed   = duckspeed;
     user_oldspeed[id] = speed;
   }
   else if (entity_get_int(id, EV_INT_waterlevel))
   {
-    if (get_user_button(id) & IN_JUMP)
-    {
-      //~ client_print(id, print_chat, "waterlevel: %d", entity_get_int(id, EV_INT_waterlevel));
-      
-      disable_acceleration = (noaccel_flags & NOACCEL_SWIM);
-      player_maxspeed      = get_pcvar_float(cvar_swimspeed);
-    }
-    else
+    /**
+    * 0 - Not in water
+    * 1 - Waiding
+    * 2 - Mostly submerged
+    * 3 - Completely submerged
+    */
+    if (!(get_user_button(id) & IN_JUMP))
     {
       disable_acceleration = 0;
     }
+    else
+    {
+      //~ client_print(id, print_chat, "waterlevel: %d", entity_get_int(id, EV_INT_waterlevel));
+      disable_acceleration = (noaccel_flags & NOACCEL_SWIM);
+      player_maxspeed      = swimspeed;
+    }
+  }
+  else if (is_user_surfing(id))
+  {
+    disable_acceleration = (noaccel_flags & NOACCEL_SURF);
+    player_maxspeed      = surfspeed;
   }
   
   if (disable_acceleration && (user_oldspeed[id] > 0.0))
@@ -215,6 +223,42 @@ public client_PostThink(id)
   return PLUGIN_CONTINUE;
 }
 
+public is_user_surfing(id)
+{
+  new Float:origin[3];
+  new Float:end[3];
+  
+  entity_get_vector(id, EV_VEC_origin, origin);
+  xs_vec_copy(origin, end);
+  
+  end[2] -= 1.0;
+  
+  new hull = (get_entity_flags(id) & FL_DUCKING) ? HULL_HEAD : HULL_HUMAN;
+  new Float:fraction;
+  
+  trace_hull(origin, hull, id, IGNORE_MONSTERS, end);
+  traceresult(TR_Fraction, fraction);
+  
+  if (fraction == 1.0)
+  {
+    return 0;
+  }
+  
+  new Float:normal[3];
+  traceresult(TR_PlaneNormal, normal);
+  
+  new Float:cosine;
+  new Float:vector_up[3] = {0.0, 0.0, 1.0};
+  
+  cosine = xs_vec_dot(normal, vector_up);
+  //new Float:tilt = floatacos(cosine, degrees);
+  
+  //client_print(id, print_center, "[%3.3f°]", tilt);
+  
+  return (cosine <= 0.7)
+}
+
+
 show_speed(id, Float:speed, Float:player_maxspeed, bool:player_ducked = false)
 {
   if (!debug_is_enabled || !user_enabled_speed[id])
@@ -236,3 +280,4 @@ show_speed(id, Float:speed, Float:player_maxspeed, bool:player_ducked = false)
   
   return;
 }
+
