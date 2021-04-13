@@ -31,6 +31,7 @@ new Float:user_oldspeed[33];
 new Float:hud_time[33];
 
 new bool:just_double_ducked[33];
+new bool:just_surfed[33];
 new bool:user_enabled_speed[33];
 
 enum
@@ -67,7 +68,9 @@ public plugin_init()
 public client_connect(id)
 {
   user_oldspeed[id]      = 0.0;
+  just_double_ducked[id] = false;
   user_enabled_speed[id] = false;
+  just_surfed[id]        = false;
 }
 
 public handle_speed(id)
@@ -102,6 +105,8 @@ public client_cmdStart(id)
   
   if(user_flags & FL_ONGROUND)
   {
+    just_surfed[id] = false;
+    
     // Check if double duck is happening this frame
     //   https://kz-rush.ru/en/article/countjump-physics
     //   https://forums.alliedmods.net/showthread.php?p=619219
@@ -148,6 +153,7 @@ public client_PostThink(id)
   
   if(user_flags & FL_ONGROUND)
   {
+    just_surfed[id] = false;
     user_oldspeed[id] = 0.0;
     
     return PLUGIN_CONTINUE;
@@ -172,6 +178,8 @@ public client_PostThink(id)
   }
   else if (entity_get_int(id, EV_INT_waterlevel))
   {
+    just_surfed[id] = false;
+    
     /**
     * 0 - Not in water
     * 1 - Waiding
@@ -189,10 +197,11 @@ public client_PostThink(id)
       player_maxspeed      = swimspeed;
     }
   }
-  else if (is_user_surfing(id))
+  else if (is_user_surfing(id) || just_surfed[id])
   {
     disable_acceleration = (noaccel_flags & NOACCEL_SURF);
     player_maxspeed      = surfspeed;
+    just_surfed[id]      = true;
   }
   
   if (disable_acceleration && (user_oldspeed[id] > 0.0))
