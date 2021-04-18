@@ -7,8 +7,8 @@
 #include <xs>
 #include <fun>
 
-#define MOD_TITLE   "Advanced Observer"
-#define MOD_VERSION "0.4.13"
+#define MOD_TITLE   "AdvancedObserver"
+#define MOD_VERSION "0.4.14"
 #define MOD_AUTHOR  "lonewolf"
 
 #define DEBUG_ENABLED true
@@ -32,6 +32,13 @@
 
 #define TASK_ID_DEBUG 11515
 
+enum
+{
+  CAMERA_MODE_SPEC_ANYONE = 0,
+  CAMERA_MODE_SPEC_ONLY_TEAM,      
+  CAMERA_MODE_SPEC_ONLY_FIRST_PERSON
+};
+
 static const FLAG_CLASSNAME[] = "ctf_flag"
 static const Float:zeros[3] = {0.0, 0.0, 0.0};
     
@@ -49,14 +56,14 @@ new MSG_ID_CROSSHAIR;
 new entities_flag[CsTeams];
 new entity_c4 = 0;
 
-new player_aimed[MAX_PLAYERS + 1];
-new Float:next_action[MAX_PLAYERS + 1];
+new Float:next_action[MAX_PLAYERS+1];
+new player_aimed[MAX_PLAYERS+1];
 
-new bool:player_changed_specmode[MAX_PLAYERS + 1];
+new bool:player_move_to_eyes[MAX_PLAYERS+1];
 
 new camera_hooked[MAX_PLAYERS + 1];
-new camera_grenade_to_follow[MAX_PLAYERS + 1];
-new camera_ent_to_follow[MAX_PLAYERS + 1];
+new camera_grenade_to_follow[MAX_PLAYERS+1];
+new camera_ent_to_follow[MAX_PLAYERS+1];
 
 new camera_grenade_bits = 0x00000000;
 new camera_enabled_bits = 0x00000000;
@@ -65,7 +72,7 @@ new camera_debug_bits   = 0x00000000;
 public plugin_init()
 {
   register_plugin(MOD_TITLE, MOD_VERSION, MOD_AUTHOR)
-    
+  
   register_clcmd("say /obs",      "handle_obs");
   register_clcmd("say /obsdebug", "handle_obsdebug");
   
@@ -86,6 +93,8 @@ public plugin_init()
   
   register_clcmd("+camera_grenade",  "camera_grenade_set");
   register_clcmd("-camera_grenade",  "camera_grenade_unset");
+
+  register_clcmd("say /debug",  "debug_print", ADMIN_CVAR);
   
   MSG_ID_SCREENFADE = get_user_msgid("ScreenFade");
   MSG_ID_CROSSHAIR  = get_user_msgid("Crosshair");
@@ -95,38 +104,28 @@ public plugin_init()
   RegisterHam(Ham_Killed, "player",  "event_player_killed", .Post = true);
   RegisterHam(Ham_Think,  "grenade", "think_grenade"); 
   
-  // RegisterHam(Ham_Item_Deploy, "weapon_c4", "update_c4", 1);
-  // RegisterHam(Ham_Spawn,       "weaponbox", "weaponbox_spawn", 1);
-  
   register_event("ScoreAttrib", "event_pickedthebomb", "bc", "2=2");
   register_logevent("event_droppedthebomb",     3, "2=Dropped_The_Bomb");
   register_logevent("event_plantedthebomb",     3, "2=Planted_The_Bomb");
-  // register_logevent("event_spawnedwiththebomb", 3, "2=Spawned_With_The_Bomb");
   
   register_forward(FM_AddToFullPack, "fwd_addtofullpack", 1);
   
   new task_id = 5032;
   set_task(5.0, "task_find_flag_holders", task_id); // delayed
   
-  // set_task(1.0, "debug_print", TASK_ID_DEBUG, .flags = "b");
+//   set_task(1.0, "debug_print", TASK_ID_DEBUG, .flags = "b");
+  
 }
 
 public event_pickedthebomb()
 {
   new id = read_data(1);
-  // DEBUG(0, print_chat, "event_pickedthebomb %d", id);
   
   if (is_user_alive(id))
   {
     entity_c4 = id;
   }
 }
-
-
-// public event_spawnedwiththebomb()
-// {
-  // DEBUG(0, print_chat, "event_spawnedwiththebomb");
-// }
 
 public event_droppedthebomb()
 {
@@ -135,14 +134,11 @@ public event_droppedthebomb()
 
 public event_droppedthebomb_delayed()
 {
-  // DEBUG(0, print_chat, "event_droppedthebomb");
-  
   new c4_ent = find_ent_by_class(0, "weapon_c4");
   
   if (!c4_ent)
   {
     entity_c4 = 0;
-    // DEBUG(0, print_chat, "dC4 not found, %d", c4_ent);
     return;
   }
   
@@ -150,25 +146,20 @@ public event_droppedthebomb_delayed()
   if (is_user_connected(weaponbox))
   {
     entity_c4 = 0;
-    // DEBUG(0, print_chat, "C4 dropped but owner isn't weaponbox", c4_ent);
     set_task(0.1, "event_droppedthebomb_delayed", 252);
     return;
   }
   
   entity_c4 = weaponbox;
-  // DEBUG(0, print_chat, "dC4 ent: %d, owner: %d", c4_ent, weaponbox);
 }
 
 public event_plantedthebomb()
-{
-  // DEBUG(0, print_chat, "event_plantedthebomb");
-  
+{  
   new c4_ent = -1;
   new is_c4 = 0;
   while((c4_ent = find_ent_by_class(c4_ent, "grenade")))
   {
     is_c4 = get_ent_data(c4_ent, "CGrenade", "m_bIsC4");
-    // DEBUG(0, print_chat, "grenade, %d %d", c4_ent, is_c4);
     if (is_c4)
     {
       break;
@@ -177,21 +168,12 @@ public event_plantedthebomb()
   
   if ((c4_ent <= 0) || !is_c4)
   {
-    // DEBUG(0, print_chat, "C4 not found, %d %d", c4_ent, is_c4);
     return;
   }
   
   entity_c4 = c4_ent;
-  // new c4_owner = entity_get_edict(c4_ent, EV_ENT_owner);
-  // DEBUG(0, print_chat, "C4 ent: %d, owner: %d", c4_ent, c4_owner);
 }
 
-
-public update_c4(c4_ent)
-{
-  // new c4_owner = entity_get_edict(c4_ent, EV_ENT_owner);
-  // DEBUG(0, print_chat, "C4 ent: %d, owner: %d", c4_ent, c4_owner);
-}
 
 public debug_print(id)
 {
@@ -200,66 +182,183 @@ public debug_print(id)
     return;
   }
   
-  // for (new id = 1; id < MAX_PLAYERS; ++id)
-  // {
-    // if (!(camera_debug_bits & (1 << id-1)))
-    // {
-      // continue;
-    // }
+  for (new id = 1; id < MAX_PLAYERS; ++id)
+  {
+    if (!(camera_debug_bits & (1 << id-1)))
+    {
+      continue;
+    }
     
-    // new observer_target       = get_ent_data_entity(id, "CBasePlayer", "m_hObserverTarget");
-    // new observer_lastmode     = get_ent_data(id, "CBasePlayer", "m_iObserverLastMode");
-    // new observer_wasfollowing = get_ent_data(id, "CBasePlayer", "m_bWasFollowing");
-    // new observer_canswitch    = get_ent_data(id, "CBasePlayer", "m_canSwitchObserverModes");
+    new observer_target       = get_ent_data_entity(id, "CBasePlayer", "m_hObserverTarget");
+    new observer_lastmode     = get_ent_data(id, "CBasePlayer", "m_iObserverLastMode");
+    new observer_wasfollowing = get_ent_data(id, "CBasePlayer", "m_bWasFollowing");
+    new observer_canswitch    = get_ent_data(id, "CBasePlayer", "m_canSwitchObserverModes");
     
-    // DEBUG(id, print_chat, "[DEBUG 1/2] target: %d, lastmode: %d, wasfollowing: %s, canswitch: %s", observer_target, observer_lastmode, observer_wasfollowing ? "true" : "false", observer_canswitch ? "true" : "false");
+    DEBUG(id, print_chat, "[DEBUG 1/2] target: %d, lastmode: %d, wasfollowing: %s, canswitch: %s", observer_target, observer_lastmode, observer_wasfollowing ? "true" : "false", observer_canswitch ? "true" : "false");
     
-    // new iuser1 = entity_get_int(id, EV_INT_iuser1);
-    // new iuser2 = entity_get_int(id, EV_INT_iuser2);
-    // new iuser3 = entity_get_int(id, EV_INT_iuser3);
+    new iuser1 = entity_get_int(id, EV_INT_iuser1);
+    new iuser2 = entity_get_int(id, EV_INT_iuser2);
+    new iuser3 = entity_get_int(id, EV_INT_iuser3);
     
-    // DEBUG(id, print_chat, "[DEBUG 2/2] iuser{1,2,3}: {%d, %d, %d}", iuser1, iuser2, iuser3);
-  // }
+    DEBUG(id, print_chat, "[DEBUG 2/2] iuser{1,2,3}: {%d, %d, %d}", iuser1, iuser2, iuser3);
+  }
 }
 
-// When entering OBS_ROAMING make observar start pointing to last target's 'v_angle'
+// When entering OBS_ROAMING make observer start pointing to last target's 'v_angle'
 public client_cmdStart(id)
 {
-  if (!is_user_connected(id))
+  if (is_user_alive(id))
   {
-    return;
+    return PLUGIN_CONTINUE;
   }
   
+  #if defined DEBUG 
+  if (id != 1)
+  {
+    return PLUGIN_CONTINUE;
+  }
+  #endif // DEBUG
+
   new buttons    = get_usercmd(usercmd_buttons);
   new oldbuttons = get_user_oldbutton(id);
   
   new pressed = (buttons ^ oldbuttons) & buttons;
   
-  if (!(pressed & IN_JUMP))
+  if (!(pressed & (IN_JUMP | IN_ATTACK | IN_ATTACK2 | IN_RELOAD)))
   {
-    return;
-  }
-  
-  new mode = entity_get_int(id, EV_INT_iuser1);
-  
-  // Next is OBS_ROAMING
-  // https://github.com/s1lentq/ReGameDLL_CS/blob/efb06a7a201829bdbe13218bc5f5342e1f2ed8f1/regamedll/dlls/observer.cpp#L215
-  if (mode != OBS_IN_EYE)
-  {
-    return;
+    return PLUGIN_CONTINUE;
   }
   
   new Float:now = get_gametime();
   
-  if (now <= next_action[id])
+  if (now < next_action[id])
   {
-    return;
+    return PLUGIN_CONTINUE;
   }
   
-  camera_update_angles(id);
-  player_changed_specmode[id] = true;
+  next_action[id] = now + 0.1;
   
-  next_action[id] = now + 0.2;
+  // Disable default observer inputs
+  // TODO: find a good forward to set this just one time
+  set_ent_data_float(id, "CBasePlayer", "m_flNextObserverInput", get_gametime() + 1337.0);
+
+  if (pressed & IN_JUMP)
+  {
+    next_spec_mode(id);
+    
+    return PLUGIN_CONTINUE;
+  }
+
+  if (pressed & (IN_ATTACK | IN_ATTACK2))
+  {
+    new reverse = (pressed & IN_ATTACK2);
+    find_next_player(id, reverse);
+    
+    return PLUGIN_CONTINUE;
+  }
+
+  return PLUGIN_CONTINUE;
+}
+
+public next_spec_mode(id)
+{
+  new mode = entity_get_int(id, EV_INT_iuser1);
+  switch (mode)
+  {
+    case OBS_CHASE_LOCKED: camera_specmode(id, OBS_IN_EYE);
+    case OBS_CHASE_FREE:   camera_specmode(id, OBS_IN_EYE);
+    case OBS_IN_EYE:       camera_specmode(id, OBS_ROAMING);
+    case OBS_ROAMING:      camera_specmode(id, OBS_IN_EYE);
+    case OBS_MAP_FREE:     camera_specmode(id, OBS_IN_EYE);
+    default:               camera_specmode(id, OBS_IN_EYE);
+  }
+}
+
+public find_next_player(id, reverse)
+{
+  new dir = reverse ? -1 : 1;
+  new current = get_ent_data_entity(id, "CBasePlayer", "m_hObserverTarget");
+  new start = current;
+  new CsTeams:team = cs_get_user_team(id);
+  new bool:same_team = get_force_camera() != CAMERA_MODE_SPEC_ANYONE && team != CS_TEAM_SPECTATOR;
+  
+  new target = 0;
+  do
+  {
+    current += dir;
+    if (current >= MaxClients)
+    {
+      current = 1;
+    }
+    else if (current < 1)
+    {
+      current = MaxClients;
+    }
+    target = is_valid_target(id, current, same_team)
+    if (target)
+    {
+      break;
+    }
+  } 
+  while (current != start)
+
+  if (target)
+  {
+    player_move_to_eyes[id] = true;
+    set_ent_data_entity(id, "CBasePlayer", "m_hObserverTarget", target);
+    
+    new mode = entity_get_int(id, EV_INT_iuser1);
+    if (mode != OBS_ROAMING)
+    {
+      entity_set_int(id, EV_INT_iuser2, target);
+    }
+  }
+}
+
+public get_force_camera()
+{
+  new ret;
+  new fadetoblack = get_cvar_num("mp_fadetoblack");
+
+  if (!fadetoblack)
+  {
+    ret = get_cvar_num("mp_forcechasecam");
+    if (ret == CAMERA_MODE_SPEC_ANYONE)
+    {
+      ret = get_cvar_num("mp_forcecamera");
+    }
+  }
+  else 
+  {
+    ret = CAMERA_MODE_SPEC_ONLY_FIRST_PERSON
+  }
+
+  return ret;
+}
+
+
+public is_valid_target(id, target, bool:same_team)
+{
+  if (!is_user_alive(target) || id == target)
+  {
+    return 0;
+  }
+
+  new obs_mode = entity_get_int(target, EV_INT_iuser1);
+  new effects  = entity_get_int(target, EV_INT_effects);
+
+  new CsTeams:team_target = cs_get_user_team(target);
+  new CsTeams:team_id     = cs_get_user_team(id);
+
+  if (obs_mode != OBS_NONE || 
+      effects & EF_NODRAW || 
+      (team_target != CS_TEAM_T && team_target != CS_TEAM_CT) ||
+      (same_team && (team_target != team_id && team_id != CS_TEAM_SPECTATOR)))
+  {
+    return 0;
+  }
+
+  return target;
 }
 
 
@@ -270,30 +369,11 @@ public client_PostThink(id)
     return PLUGIN_CONTINUE;
   }
   
-  if (player_changed_specmode[id])
+  if (player_move_to_eyes[id])
   {
-    new Float:origin[3];
-    entity_get_vector(id, EV_VEC_origin, origin);
-    
-    new Float:angles[3];
-    entity_get_vector(id, EV_VEC_v_angle, angles);
-    
-    EF_MakeVectors(angles);
-    
-    new Float:v_forward[3];
-    get_global_vector(GL_v_forward, v_forward);
-    
-    origin[0] += v_forward[0] * 10;
-    origin[1] += v_forward[1] * 10;
-    
-    new is_ducking = get_entity_flags(id) & FL_DUCKING;
-    origin[2] += is_ducking ? PM_VEC_DUCK_VIEW : PM_VEC_VIEW;
-    
-    entity_set_origin(id, origin);
-    
-    set_observer_crosshair(id, OBS_ROAMING);
-  
-    player_changed_specmode[id] = false;
+    camera_move_to_eyes(id);
+
+    player_move_to_eyes[id] = false;
   }
   
   new grenade = camera_grenade_to_follow[id];
@@ -324,7 +404,10 @@ public client_PostThink(id)
   // get_user_name(grenade_owner, target_name, charsmax(target_name));
   
   // DEBUG(1, print_chat, "#%d OWNER: %s[%d]", grenade, target_name, grenade_owner);
-  camera_follow_grenade(id, grenade);
+  // camera_follow_grenade(id, grenade);
+  
+  
+  camera_follow_ent(id, grenade);
   
   return PLUGIN_CONTINUE;
 }
@@ -350,9 +433,9 @@ public camera_follow_grenade(id, grenade)
   xs_vec_copy(origin, spec_origin);
   xs_vec_div_scalar(velocity, -speed, velocity);
   // xs_vec_add_scaled(spec_origin, velocity, 100.0, spec_origin);
-  xs_vec_add_scaled(spec_origin, velocity, floatclamp(speed, 50.0, 150.0), spec_origin);
+  xs_vec_add_scaled(spec_origin, velocity, floatclamp(speed, 50.0, 250.0), spec_origin);
   
-  spec_origin[2] += (velocity[2] >= 0.0) ? 32.0 : -32.0;
+//   spec_origin[2] += (velocity[2] >= 0.0) ? 32.0 : -32.0;
   
   new trace;
   new Float:fraction;
@@ -396,8 +479,26 @@ public camera_specmode(id, mode)
   static mode_string[32];
   num_to_str(mode, mode_string, charsmax(mode_string));
   
-  engclient_cmd(id, "specmode", mode_string);
-    
+  // There is a bug in CS16 that the code resets the ObserverTarget if forcecamera is set to 1 AND observer is not
+  // in the same team as the target even if observer is a spectator.
+  //
+  // https://github.com/s1lentq/ReGameDLL_CS/blob/efb06a7a201829bdbe13218bc5f5342e1f2ed8f1/regamedll/dlls/observer.cpp#L458
+  if (get_cvar_num("mp_forcecamera") || get_cvar_num("mp_forcechasecam"))
+  {
+    // new target = entity_get_int(id, EV_INT_iuser2);
+    new target = get_ent_data_entity(id, "CBasePlayer", "m_hObserverTarget");
+    engclient_cmd(id, "specmode", mode_string);
+    camera_follow(id, target);
+  }
+  else
+  {
+    engclient_cmd(id, "specmode", mode_string);
+  }
+  
+  if (mode == OBS_ROAMING)
+  {
+    player_move_to_eyes[id] = true;
+  }
   set_observer_crosshair(id, mode);
 }
 
@@ -412,36 +513,51 @@ public camera_follow(id, target)
   static target_name[32];
   get_user_name(target, target_name, charsmax(target_name));
   
+  set_ent_data_float(id, "CBasePlayer", "m_flNextFollowTime", 0.0);
   engclient_cmd(id, "follow", target_name);
 }
 
-
-public camera_update_angles(id)
+public camera_move_to_eyes(id)
 {
   if (is_user_alive(id))
   {
-    return;
+    return PLUGIN_CONTINUE;
   }
-  
-  new target = entity_get_int(id, EV_INT_iuser2);
-  
+
+  new target = get_ent_data_entity(id, "CBasePlayer", "m_hObserverTarget");
   if (!is_user_alive(target))
   {
-    return;
+    return PLUGIN_CONTINUE;
   }
-  
+
+  new Float:eyes[3];
+  new Float:view_ofs[3];
+  entity_get_vector(target, EV_VEC_origin, eyes);
+  entity_get_vector(target, EV_VEC_view_ofs, view_ofs);
+  xs_vec_add(eyes, view_ofs, eyes);
+
   new Float:angles[3];
+  entity_get_vector(target, EV_VEC_v_angle, angles);
   
-  entity_get_vector(target, EV_VEC_angles, angles);
+  EF_MakeVectors(angles);
   
-  angles[0] *= -3.0;
+  new Float:v_forward[3];
+  get_global_vector(GL_v_forward, v_forward);
+  
+  eyes[0] += v_forward[0] * 10;
+  eyes[1] += v_forward[1] * 10;
+  
+  entity_set_origin(id, eyes);
+
+  // angles[0] *= -3.0;
   
   entity_set_vector(id, EV_VEC_angles,     angles);
   entity_set_vector(id, EV_VEC_v_angle,    angles);
   entity_set_vector(id, EV_VEC_punchangle, zeros);
   
   entity_set_int(id, EV_INT_fixangle, 1);
-  
+
+  return PLUGIN_CONTINUE;  
 }
 
 // Thanks to "Numb / ConnorMcLeod | Wilian M." for "CS Revo: No Flash Team" code
@@ -492,7 +608,9 @@ public think_grenade(grenade)
   //DEBUG 
   // if (!camera_grenade_to_follow[1])
   // {
-    // camera_grenade_to_follow[1] = grenade;
+  //   camera_follow(1, grenade_owner);
+  //   camera_move_to_eyes(1);
+  //   camera_grenade_to_follow[1] = grenade;
   // }
   
   return HAM_HANDLED;
@@ -562,27 +680,31 @@ public camera_hook_unset(id)
 
 public client_connect(id)
 {
-  camera_enabled_bits          &= ~(1 << id-1);
-  camera_grenade_bits          &= ~(1 << id-1);
-  camera_debug_bits            &= ~(1 << id-1);
+  camera_enabled_bits &= ~(1 << id-1);
+  camera_grenade_bits &= ~(1 << id-1);
+  camera_debug_bits   &= ~(1 << id-1);
   camera_hooked[id]             = false;
   camera_grenade_to_follow[id]  = 0;
   camera_ent_to_follow[id]      = 0;
-  player_aimed[id]              = 0;
-  next_action[id]               = 0.0;
+  
+  player_move_to_eyes[id] = false;
+  player_aimed[id]        = 0;
+  next_action[id]         = 0.0;
 }
 
 
 public client_disconnected(id)
 {
-  camera_enabled_bits          &= ~(1 << id-1);
-  camera_grenade_bits          &= ~(1 << id-1);
-  camera_debug_bits            &= ~(1 << id-1);
+  camera_enabled_bits &= ~(1 << id-1);
+  camera_grenade_bits &= ~(1 << id-1);
+  camera_debug_bits   &= ~(1 << id-1);
   camera_hooked[id]             = false;
   camera_grenade_to_follow[id]  = 0;
   camera_ent_to_follow[id]      = 0;
-  player_aimed[id]              = 0;
-  next_action[id]               = 0.0;
+  
+  player_move_to_eyes[id] = false;
+  player_aimed[id]        = 0;
+  next_action[id]         = 0.0;
 }
 
 
@@ -676,11 +798,22 @@ public task_check_spec_aiming(task_id)
       
       
       // DEBUG(spectator, print_chat, "ent: %d", ent);
-      // set_ent_data_entity(spectator, "CBasePlayer", "m_hObserverTarget", ent);
+      // DEBUG(0, print_chat, "a: %d %d", get_ent_data_entity(spectator, "CBasePlayer", "m_hObserverTarget"), entity_get_int(spectator, EV_INT_iuser2))
+      // set_ent_data_entity(spectator, "CBasePlayer", "m_hObserverTarget", ent-1);
+      // entity_set_int(spectator, EV_INT_iuser2, ent);
       
-      set_ent_data_entity(spectator, "CBasePlayer", "m_hObserverTarget", ent);
+      DEBUG(0, print_chat, "b: %d %d", get_ent_data_entity(spectator, "CBasePlayer", "m_hObserverTarget"), entity_get_int(spectator, EV_INT_iuser2))
+      
+      // new CsTeams:team_target = cs_get_user_team(ent);
+      // new CsTeams:team_spec   = cs_get_user_team(ent);
+      
+      // set_ent_data(ent, "CBasePlayer", "m_iTeam", team_spec);
       camera_specmode(spectator, OBS_IN_EYE);
+      DEBUG(0, print_chat, "c: %d %d", get_ent_data_entity(spectator, "CBasePlayer", "m_hObserverTarget"), entity_get_int(spectator, EV_INT_iuser2))
       camera_follow(spectator, ent);
+      DEBUG(0, print_chat, "d: %d %d", get_ent_data_entity(spectator, "CBasePlayer", "m_hObserverTarget"), entity_get_int(spectator, EV_INT_iuser2))
+      // set_ent_data(ent, "CBasePlayer", "m_iTeam", team_target);
+        
       // entity_set_int(spectator, EV_INT_iuser2, ent);
       
       
