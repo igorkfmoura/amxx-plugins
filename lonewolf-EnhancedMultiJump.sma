@@ -130,6 +130,7 @@ public client_PostThink(id)
     // Second Jump height
     maxheight += jump_height;
 
+    fuser2[id] = 0.0; // for next airjumps
     velocity[2] = xs_sqrt(2.0 * gravity * (maxheight - height_elapsed));
   }
   
