@@ -1,4 +1,5 @@
-// MaxSpeed - Igor "lonewolf" Kelvin <igorkelvin@gmail.com
+// MaxSpeed by lonewolf <igorkelvin@gmail.com>
+// https://github.com/igorkelvin/amxx-plugins
 
 #include <amxmodx>
 #include <amxmisc>
@@ -33,6 +34,22 @@ new Float:hud_time[33];
 new bool:just_double_ducked[33];
 new bool:just_surfed[33];
 new bool:user_enabled_speed[33];
+
+enum State
+{
+  AIR,
+  DDUCK,
+  WATER,
+  SURF
+};
+
+new tags[State][10] =
+{
+  " ",
+  "[DUCK]",
+  "[WATER]",
+  "[SURF]"
+}
 
 enum
 {
@@ -129,9 +146,7 @@ public client_PostThink(id)
   
   if (!is_user_alive(id) && debug_is_enabled && (user_enabled_speed[id] || is_user_admin(id)))
   {    
-    new target = id;
-    
-    target = entity_get_int(id, EV_INT_iuser2);
+    new target = entity_get_int(id, EV_INT_iuser2);
     
     if (!is_user_alive(target))
     {
@@ -163,6 +178,9 @@ public client_PostThink(id)
   new bool:player_ducked    = just_double_ducked[id];
   new disable_acceleration  = noaccel_flags & NOACCEL_AIR;
   
+  new tag[10];
+  tag = tags[AIR];
+
   just_double_ducked[id] = false;
     
   new Float:velocity[3];
@@ -175,33 +193,32 @@ public client_PostThink(id)
   {
     player_maxspeed   = duckspeed;
     user_oldspeed[id] = speed;
+
+    tag = tags[DDUCK];
+  }
+  else if (just_surfed[id] || is_user_surfing(id))
+  {
+    disable_acceleration = (noaccel_flags & NOACCEL_SURF);
+    player_maxspeed      = surfspeed;
+    just_surfed[id]      = true;
+
+    tag = tags[SURF];
   }
   else if (entity_get_int(id, EV_INT_waterlevel))
   {
     just_surfed[id] = false;
     
-    /**
-    * 0 - Not in water
-    * 1 - Waiding
-    * 2 - Mostly submerged
-    * 3 - Completely submerged
-    */
     if (!(get_user_button(id) & IN_JUMP))
     {
       disable_acceleration = 0;
     }
     else
     {
-      //~ client_print(id, print_chat, "waterlevel: %d", entity_get_int(id, EV_INT_waterlevel));
       disable_acceleration = (noaccel_flags & NOACCEL_SWIM);
       player_maxspeed      = swimspeed;
+
+      tag = tags[WATER];
     }
-  }
-  else if (is_user_surfing(id) || just_surfed[id])
-  {
-    disable_acceleration = (noaccel_flags & NOACCEL_SURF);
-    player_maxspeed      = surfspeed;
-    just_surfed[id]      = true;
   }
   
   if (disable_acceleration && (user_oldspeed[id] > 0.0))
@@ -211,7 +228,7 @@ public client_PostThink(id)
   
   if (speed <= player_maxspeed)
   {
-    show_speed(id, speed, player_maxspeed, player_ducked)
+    show_speed(id, speed, player_maxspeed, tag)
     user_oldspeed[id] = speed;
     
     return PLUGIN_CONTINUE;
@@ -227,7 +244,7 @@ public client_PostThink(id)
   velocity[1] *= c;
   
   entity_set_vector(id, EV_VEC_velocity, velocity);
-  show_speed(id, speed, player_maxspeed, player_ducked)
+  show_speed(id, speed, player_maxspeed, tag)
   
   return PLUGIN_CONTINUE;
 }
@@ -260,33 +277,36 @@ public is_user_surfing(id)
   new Float:vector_up[3] = {0.0, 0.0, 1.0};
   
   cosine = xs_vec_dot(normal, vector_up);
+
   //new Float:tilt = floatacos(cosine, degrees);
-  
   //client_print(id, print_center, "[%3.3f°]", tilt);
   
-  return (cosine <= 0.7)
+  return (cosine <= 0.7);
 }
 
 
-show_speed(id, Float:speed, Float:player_maxspeed, bool:player_ducked = false)
+show_speed(id, Float:speed, Float:player_maxspeed, tag[10] = "^0")
 {
+  if (tag[0] == '^0')
+  {
+    tag = tags[AIR];
+  }
+  
   if (!debug_is_enabled || !user_enabled_speed[id])
   {
     return;
   }
 
   new Float:now = get_gametime();
-  if (now < hud_time[id] && !player_ducked)
+  if (now < hud_time[id])
   {
     return;
   }
   
-  new str[10];
-  copy(str, sizeof str, (player_ducked) ? "[DUCKED]" : "");
+  client_print(id, print_center, "%s %4.2f/%4.2f %s", tag, speed, player_maxspeed, tag)
   
-  client_print(id, print_center, "%s %4.2f/%4.2f %s", str, speed, player_maxspeed, str)
-  hud_time[id] = now + (player_ducked ? 0.3 : 0.1);
-  
+  hud_time[id] = now + 0.2;
   return;
 }
+
 
