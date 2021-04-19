@@ -291,7 +291,7 @@ show_speed(id, Float:speed, Float:player_maxspeed, tag[10] = "^0")
   {
     tag = tags[AIR];
   }
-
+  
   if (!debug_is_enabled || !user_enabled_speed[id])
   {
     return;
