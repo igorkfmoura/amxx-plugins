@@ -1,4 +1,3 @@
-
 // Enhanced MultiJump - lonewolf <igorkelvin@gmail.com>
 // https://github.com/igorkelvin/amxx-plugins
 //
