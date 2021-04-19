@@ -1,6 +1,6 @@
 
-// Enhanced MultiJump - Igor "lonewolf" Kelvin <igorkelvin@gmail.com
-//
+// Enhanced MultiJump - lonewolf <igorkelvin@gmail.com
+// https://github.com/igorkelvin/amxx-plugins
 //
 // Good source of knowledge:
 // https://github.com/s1lentq/ReGameDLL_CS/blob/master/regamedll/pm_shared/pm_shared.cpp
@@ -10,7 +10,7 @@
 #include <xs>
 
 #define PLUGIN  "EnhancedMultiJump"
-#define VERSION "0.3"
+#define VERSION "0.4"
 #define AUTHOR  "lonewolf"
 
 
@@ -19,22 +19,23 @@
   
 new const Float:JUMP_TIME_WAIT = 0.2;
 new const Float:JUMP_SPEED     = 268.32815729997475;
-new const Float:FUSER2_DEFAULT = 1315.789429
+new const Float:FUSER2_DEFAULT = 1315.789429;
 
-new bool:ready_to_jump[MAX_PLAYERS + 1];
+new bool:ready_to_jump[MAX_PLAYERS+1];
 
-new Float:next_jump_time[MAX_PLAYERS + 1];
-new Float:maxheight[MAX_PLAYERS + 1];
+new Float:next_jump_time[MAX_PLAYERS+1];
+new Float:fuser2[MAX_PLAYERS+1];
 
-new airjumps[MAX_PLAYERS + 1];
+new airjumps[MAX_PLAYERS+1];
 
 new pcvar_maxjumps;
+
 
 public plugin_init()
 {
   register_plugin(PLUGIN, VERSION, AUTHOR)
   
-  pcvar_maxjumps = create_cvar("amx_maxjumps", "1", _, "- maximum number of airjumps");
+  pcvar_maxjumps = create_cvar("amx_maxjumps", "1", _, "<int> maximum number of airjumps");
   
   new maxjumps = get_pcvar_num(pcvar_maxjumps);
   arrayset(airjumps, maxjumps, sizeof(airjumps));
@@ -45,13 +46,7 @@ public client_connect(id)
 {
   ready_to_jump[id]  = false;
   next_jump_time[id] = 0.0;
-}
-
-
-public client_disconnected(id)
-{
-  ready_to_jump[id]  = false;
-  next_jump_time[id] = 0.0;
+  fuser2[id] = 0.0
 }
 
 
@@ -71,12 +66,8 @@ public client_cmdStart(id)
   
   if (get_entity_flags(id) & FL_ONGROUND)
   {
-    new Float:fuser2 = entity_get_float(id, EV_FL_fuser2);
-    
+    fuser2[id] = entity_get_float(id, EV_FL_fuser2);
     next_jump_time[id] = get_gametime() + JUMP_TIME_WAIT; 
-    maxheight[id]      = 45.0 * (100.0 - fuser2 * 0.001 * 19.0) * 0.01; // 45.0 height is fixed for 800 gravity
-    
-    // client_print(id, print_chat, "maxheight[%d]: %.3f", id, maxheight[id]);
     
     return PLUGIN_CONTINUE; 
   }
@@ -87,10 +78,10 @@ public client_cmdStart(id)
   }
   
   ready_to_jump[id]  = true;
-  airjumps[id]--;
   
   return PLUGIN_HANDLED;
 }
+
 
 public client_PostThink(id)
 {
@@ -123,22 +114,32 @@ public client_PostThink(id)
   }
   else
   {
+    // torricelli: vf^2 = vo^2 + 2*a*s
+    // for jump height: vf = 0;
     new Float:gravity = get_cvar_float("sv_gravity") * entity_get_float(id, EV_FL_gravity);
-    
-    new Float:d = (JUMP_SPEED*JUMP_SPEED - upspeed*upspeed) / (2.0 * gravity);
-    velocity[2] = xs_sqrt(2 * gravity * (45.0 + maxheight[id] - d));
-    
-    // client_print(id, print_chat, "[d:%.3f, g:%.3f]", d, gravity);
+    new Float:gravityinvbytwo = 1.0 / (2.0 * gravity);
+
+    new Float:jump_height = (72000.0) * gravityinvbytwo; // 2.0 * 800.0 * 45.0 / (2.0 * gravity)
+    new Float:upspeed_original = JUMP_SPEED * (1.0 - fuser2[id] * 0.00019);
+
+    new Float:height_elapsed = (JUMP_SPEED * JUMP_SPEED - upspeed * upspeed) * gravityinvbytwo;
+    new Float:maxheight;
+
+    // Original Jump height
+    maxheight = floatpower(upspeed_original, 2.0) * gravityinvbytwo;
+    // Second Jump height
+    maxheight += jump_height;
+
+    velocity[2] = xs_sqrt(2.0 * gravity * (maxheight - height_elapsed));
   }
   
   entity_set_vector(id, EV_VEC_velocity, velocity);
   entity_set_float(id, EV_FL_fuser2, FUSER2_DEFAULT);
   
+  airjumps[id]--;
+
   ready_to_jump[id]  = false;
-  next_jump_time[id] = get_gametime() + JUMP_TIME_WAIT; 
-  
-  // client_print(id, print_center, "airjumps[%d]: %d", id, airjumps[id]);
-  // client_print(id, print_center, "[%.3f, %.3f]", upspeed, velocity[2]);
-  
-  return PLUGIN_HANDLED;
+  next_jump_time[id] = get_gametime() + JUMP_TIME_WAIT;
+
+  return PLUGIN_CONTINUE;
 }
