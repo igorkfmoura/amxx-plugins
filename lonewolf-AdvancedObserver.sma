@@ -11,7 +11,7 @@
 #include <fun>
 
 #define MOD_TITLE   "AdvancedObserver"
-#define MOD_VERSION "0.4.15"
+#define MOD_VERSION "0.4.16"
 #define MOD_AUTHOR  "lonewolf"
 
 #define DEBUG_ENABLED true
@@ -65,9 +65,20 @@ new player_aimed[MAX_PLAYERS+1];
 new bool:player_move_to_eyes[MAX_PLAYERS+1];
 new bool:player_fixangle[MAX_PLAYERS+1];
 
+enum
+{
+  NONE,
+  C4,
+  FLAG_RED,
+  FLAG_BLUE
+};
+
+new player_follow[MAX_PLAYERS+1];
+
 new camera_hooked[MAX_PLAYERS + 1];
 new camera_grenade_to_follow[MAX_PLAYERS+1];
 new camera_ent_to_follow[MAX_PLAYERS+1];
+
 
 new camera_grenade_bits = 0x00000000;
 new camera_enabled_bits = 0x00000000;
@@ -393,20 +404,16 @@ public client_PostThink(id)
     camera_grenade_to_follow[id] = 0;
     return PLUGIN_CONTINUE;
   }
-  else
+  else 
   {
-    new ent = camera_ent_to_follow[id];
-    
-    if (is_valid_ent(ent))
+    new follow = player_follow[id];
+
+    switch (follow)
     {
-      if (ent == entity_c4)
-      {
-        camera_follow_c4(id, ent);
-      }
-      else
-      {
-        camera_follow_flag(id, ent);
-      }
+      case NONE:      {}
+      case C4:        camera_follow_c4(id);
+      case FLAG_RED:  camera_follow_flag(id, follow);
+      case FLAG_BLUE: camera_follow_flag(id, follow);
     }
   }
 
@@ -824,14 +831,7 @@ public camera_ent_c4(id)
     return PLUGIN_HANDLED;
   }
   
-  new c4 = entity_c4;
-  
-  if (!c4)
-  {
-    return PLUGIN_HANDLED;
-  }
-  
-  camera_ent_to_follow[id] = c4;
+  player_follow[id] = C4;
   player_fixangle[id] = true;
   
   return PLUGIN_HANDLED;
@@ -845,15 +845,7 @@ public camera_ent_flag_red(id)
     return PLUGIN_HANDLED;
   }
   
-  new flag = entities_flag[CS_TEAM_T];
-  
-  if (!flag)
-  {
-    // DEBUG(1, print_chat, "camera_flag RED !flag");
-    return PLUGIN_HANDLED;
-  }
-  
-  camera_ent_to_follow[id] = flag;
+  player_follow[id] = FLAG_RED;
   player_fixangle[id] = true;
   
   return PLUGIN_HANDLED;
@@ -866,15 +858,7 @@ public camera_ent_flag_blue(id)
     return PLUGIN_HANDLED;
   }
   
-  new flag = entities_flag[CS_TEAM_CT];
-  
-  if (!flag)
-  {
-    // DEBUG(1, print_chat, "camera_flag BLUE !flag");
-    return PLUGIN_HANDLED;
-  }
-  
-  camera_ent_to_follow[id] = flag;
+  player_follow[id] = FLAG_BLUE;
   player_fixangle[id] = true;
   
   return PLUGIN_HANDLED;
@@ -883,21 +867,20 @@ public camera_ent_flag_blue(id)
 
 public camera_ent_unset(id)
 {
-  camera_ent_to_follow[id] = 0;
+  player_follow[id] = NONE;
   player_fixangle[id] = false;
 }
 
-public camera_follow_c4(id, c4_ent)
+public camera_follow_c4(id)
 {
-  if (c4_ent != entity_c4 && is_valid_ent(entity_c4))
+  if (!is_valid_ent(entity_c4))
   {
-    DEBUG(id, print_chat, "(camera_follow_c4) c4_ent: %d, entity_c4: %d", c4_ent, entity_c4);
-    c4_ent = entity_c4;
+    return PLUGIN_CONTINUE;
   }
 
-  if (is_user_alive(c4_ent))
+  if (is_user_alive(entity_c4))
   {
-    new holder = c4_ent;
+    new holder = entity_c4;
     
     camera_specmode(id, OBS_IN_EYE);
     camera_follow(id, holder);
@@ -905,14 +888,30 @@ public camera_follow_c4(id, c4_ent)
     return PLUGIN_HANDLED;
   }
   
-  camera_follow_ent(id, c4_ent, player_fixangle[id]);
+  camera_follow_ent(id, entity_c4, player_fixangle[id]);
   player_fixangle[id] = false;
 
   return PLUGIN_HANDLED;
 }
 
-public camera_follow_flag(id, flag)
+public camera_follow_flag(id, type)
 {
+  new flag;
+
+  if (type == FLAG_RED)
+  {
+    flag = entities_flag[CS_TEAM_T];
+  }
+  else // type == FLAG_BLUE
+  {
+    flag = entities_flag[CS_TEAM_CT];
+  }
+
+  if (!is_valid_ent(flag))
+  {
+    return PLUGIN_CONTINUE;
+  }
+
   new holder = entity_get_edict(flag, EV_ENT_aiment);
   
   if (is_user_alive(holder)) // 0 is no holder, -1 is dropped
