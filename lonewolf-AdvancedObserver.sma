@@ -11,7 +11,7 @@
 #include <fun>
 
 #define MOD_TITLE   "AdvancedObserver"
-#define MOD_VERSION "0.4.16"
+#define MOD_VERSION "0.4.17"
 #define MOD_AUTHOR  "lonewolf"
 
 #define DEBUG_ENABLED true
@@ -219,6 +219,15 @@ public debug_print(id)
   }
 }
 
+enum Direction
+{
+  NONE,
+  RIGHT,
+  LEFT,
+  FORWARD,
+  BACK
+};
+
 // When entering OBS_ROAMING make observer start pointing to last target's 'v_angle'
 public client_cmdStart(id)
 {
@@ -232,16 +241,17 @@ public client_cmdStart(id)
   new pressed    = (buttons ^ oldbuttons) & buttons;
   new released   = (buttons ^ oldbuttons) & oldbuttons;
   
-  if (pressed)
-  {
-    client_print(id, print_chat, "(client_cmdStart) pressed: %d", pressed);
-  }
+  // if (pressed)
+  // {
+  //   DEBUG(0, print_chat, "(client_cmdStart) pressed: %d", pressed);
+  // }
+
   if (released & IN_RELOAD)
   {
     camera_ent_unset(id);
   }
 
-  if (!(pressed & (IN_JUMP | IN_ATTACK | IN_ATTACK2 | IN_RELOAD)))
+  if (!(pressed & (IN_JUMP | IN_ATTACK | IN_ATTACK2 | IN_RELOAD | IN_MOVELEFT | IN_MOVERIGHT | IN_BACK | IN_FORWARD)))
   {
     return PLUGIN_CONTINUE;
   }
@@ -259,7 +269,6 @@ public client_cmdStart(id)
   // TODO: find a good forward to set this just one time
   set_ent_data_float(id, "CBasePlayer", "m_flNextObserverInput", get_gametime() + 1337.0);
 
-
   if (pressed & IN_JUMP)
   {
     next_spec_mode(id);
@@ -273,9 +282,28 @@ public client_cmdStart(id)
   {
     camera_ent_c4(id);
   }
-  else if (pressed & IN_ALT1)
+  else 
   {
-    client_print(id, print_chat, "(client_cmdStart) IN_ALT1: %d", (pressed & IN_ALT1));
+    new obs_mode = entity_get_int(id, EV_INT_iuser1);
+    if (obs_mode != OBS_ROAMING)
+    {
+      if (pressed & IN_MOVERIGHT)
+      {
+        find_next_player_direction(id, RIGHT);
+      }
+      else if (pressed & IN_MOVELEFT)
+      {
+        find_next_player_direction(id, LEFT);
+      }
+      else if (pressed & IN_FORWARD)
+      {
+        find_next_player_direction(id, FORWARD);
+      }
+      else if (pressed & IN_BACK)
+      {
+        find_next_player_direction(id, BACK);
+      }
+    }
   }
 
   return PLUGIN_CONTINUE;
@@ -289,7 +317,7 @@ public next_spec_mode(id)
     case OBS_CHASE_LOCKED: camera_specmode(id, OBS_IN_EYE);
     case OBS_CHASE_FREE:   camera_specmode(id, OBS_IN_EYE);
     case OBS_IN_EYE:       camera_specmode(id, OBS_ROAMING);
-    case OBS_ROAMING:      camera_specmode(id, OBS_IN_EYE);
+    case OBS_ROAMING:      camera_specmode(id, OBS_CHASE_FREE);
     case OBS_MAP_FREE:     camera_specmode(id, OBS_IN_EYE);
     default:               camera_specmode(id, OBS_IN_EYE);
   }
@@ -334,6 +362,112 @@ find_next_player(id, reverse, CsTeams:force_team=CS_TEAM_UNASSIGNED)
       entity_set_int(id, EV_INT_iuser2, target);
     }
   }
+}
+
+find_next_player_direction(id, Direction:dir, Float:maxdistance = 500.0, CsTeams:force_team=CS_TEAM_UNASSIGNED)
+{
+  new current = get_ent_data_entity(id, "CBasePlayer", "m_hObserverTarget");
+  new CsTeams:team = cs_get_user_team(id);
+  new bool:same_team = get_force_camera() != CAMERA_MODE_SPEC_ANYONE && team != CS_TEAM_SPECTATOR;
+  
+  new Float:id_origin[3];
+  entity_get_vector(current, EV_VEC_origin, id_origin);
+
+  new Float:angles[3];
+  entity_get_vector(current, EV_VEC_angles, angles)
+  
+  angles[0] = 0.0;
+  angles[2] = 0.0;
+
+  EF_MakeVectors(angles);
+
+  new Float:closest_distance = 9999.9;
+  new closest = 0;
+
+  new Float:direction[3];
+  switch (dir)
+  {
+    case NONE:
+    {
+      return closest;
+    }
+    case RIGHT:
+    {
+      get_global_vector(GL_v_right, direction);
+    }
+    case LEFT:
+    {
+      get_global_vector(GL_v_right, direction);
+      xs_vec_neg(direction, direction);
+    }
+    case FORWARD:
+    {
+      get_global_vector(GL_v_forward, direction);
+    }
+    case BACK:
+    {
+      get_global_vector(GL_v_forward, direction);
+      xs_vec_neg(direction, direction);
+    }
+  }
+
+  for (new target = 1; target <= MaxClients; ++target)
+  {
+    // DEBUG(0, print_chat, "(find_next_player_direction) 0 - id: %d, current: %d, target: %d", id, current, target);
+    if (id == target || target == current || !is_user_alive(target))
+    {
+      continue;
+    }
+    // DEBUG(0, print_chat, "(find_next_player_direction) 1 - target: %d", target);
+
+    target = is_valid_target(id, target, same_team, force_team);
+
+    if (!target)
+    {
+      continue;
+    }
+    
+    new Float:target_origin[3];
+    entity_get_vector(target, EV_VEC_origin, target_origin);
+
+    new Float:distance = xs_vec_distance(id_origin, target_origin);
+    // DEBUG(0, print_chat, "(find_next_player_direction) 2 - target: %d, distance: %f", target, distance);
+
+    if (distance > maxdistance || distance > closest_distance)
+    {
+      continue;
+    }
+
+    xs_vec_sub(target_origin, id_origin, target_origin);
+    xs_vec_normalize(target_origin, target_origin);
+    
+    new Float:cosine = xs_vec_dot(target_origin, direction);
+    new Float:angle = floatacos(cosine, degrees);
+
+    static name[MAX_NAME_LENGTH];
+    get_user_name(target, name, charsmax(name));
+    // DEBUG(0, print_chat, "(find_next_player_direction) target: (%02d) %s, distance: %.0f, cosine: %.2f, angle: %.1f°", target, name, distance, cosine, angle);
+    
+    if (angle <= 45.0)
+    {
+      closest_distance = distance;
+      closest = target;
+    }
+  }
+
+  if (closest)
+  {
+    player_move_to_eyes[id] = true;
+    set_ent_data_entity(id, "CBasePlayer", "m_hObserverTarget", closest);
+    
+    new mode = entity_get_int(id, EV_INT_iuser1);
+    if (mode != OBS_ROAMING)
+    {
+      entity_set_int(id, EV_INT_iuser2, closest);
+    }
+  }
+
+  return closest;
 }
 
 public get_force_camera()
