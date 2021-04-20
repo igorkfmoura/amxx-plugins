@@ -381,12 +381,20 @@ public client_PostThink(id)
   }
   
   new grenade = camera_grenade_to_follow[id];
-  new grenade_owner = entity_get_edict(grenade, EV_ENT_owner);
-  
-  if (!is_valid_ent(grenade) || !is_user_connected(grenade_owner))
+
+  if (is_valid_ent(grenade))
   {
+    new grenade_owner = entity_get_edict(grenade, EV_ENT_owner);
+    if (is_user_connected(grenade_owner))
+    {
+      camera_follow_grenade(id, grenade);
+    }
+
     camera_grenade_to_follow[id] = 0;
-    
+    return PLUGIN_CONTINUE;
+  }
+  else
+  {
     new ent = camera_ent_to_follow[id];
     
     if (is_valid_ent(ent))
@@ -400,24 +408,8 @@ public client_PostThink(id)
         camera_follow_flag(id, ent);
       }
     }
-    
-    return PLUGIN_CONTINUE;
   }
 
-  // static target_name[32];
-  // get_user_name(grenade_owner, target_name, charsmax(target_name));
-  
-  // DEBUG(1, print_chat, "#%d OWNER: %s[%d]", grenade, target_name, grenade_owner);
-  // camera_follow_grenade(id, grenade);
-
-  new Float:velocity[3];
-  new Float:speed;
-  entity_get_vector(grenade, EV_VEC_velocity, velocity);
-  speed = xs_vec_len(velocity);
-
-  camera_follow_ent(id, grenade, player_fixangle[id], 100 + speed / 5, 10.0);
-  player_fixangle[id] = false;
-  
   return PLUGIN_CONTINUE;
 }
 
@@ -440,12 +432,16 @@ public camera_follow_grenade(id, grenade)
   }
   
   xs_vec_copy(origin, spec_origin);
-  xs_vec_div_scalar(velocity, -speed, velocity);
-  // xs_vec_add_scaled(spec_origin, velocity, 100.0, spec_origin);
-  xs_vec_add_scaled(spec_origin, velocity, floatclamp(speed, 50.0, 250.0), spec_origin);
+  xs_vec_div_scalar(velocity, speed, velocity);
+
+  // https://github.com/s1lentq/ReGameDLL_CS/blob/f57d28fe721ea4d57d10c010d15d45f05f2f5bad/regamedll/dlls/wpn_shared/wpn_flashbang.cpp#L191
+  // Max grenade speed should be 750
+  speed = 100 + 0.2 * speed;
+
+  xs_vec_add_scaled(spec_origin, velocity, -1.0 * speed, spec_origin);
   
-//   spec_origin[2] += (velocity[2] >= 0.0) ? 32.0 : -32.0;
-  
+  spec_origin[2] += 10.0;
+
   new trace;
   new Float:fraction;
   
@@ -454,9 +450,10 @@ public camera_follow_grenade(id, grenade)
   
   if (fraction < 1.0)
   {
-    get_tr2(trace, TR_vecEndPos, spec_origin);
+    spec_origin[0] += velocity[0] * speed * (1 - (fraction * 0.8));
+    spec_origin[1] += velocity[1] * speed * (1 - (fraction * 0.8));
+    spec_origin[2] += velocity[2] * speed * (1 - (fraction * 0.8));
   }
-  
   
   new Float:dir[3];
   xs_vec_sub(origin, spec_origin, dir);
@@ -603,25 +600,14 @@ public think_grenade(grenade)
       continue;
     }
     
-    //new target = entity_get_int(spectator, EV_INT_iuser2);
     new target = get_ent_data_entity(spectator, "CBasePlayer", "m_hObserverTarget");
-    
     
     if (target == grenade_owner)
     {
       camera_grenade_to_follow[spectator] = grenade;
-      // DEBUG(1, print_chat, "camera_grenade_to_follow[%d] (%d) = %d", spectator, IS_CAMERA_GRENADE_SET(spectator), grenade);
     }
   }
-  
-  //DEBUG 
-  // if (!camera_grenade_to_follow[1])
-  // {
-  //   camera_follow(1, grenade_owner);
-  //   camera_move_to_eyes(1);
-  //   camera_grenade_to_follow[1] = grenade;
-  // }
-  
+
   return HAM_HANDLED;
 }
 
@@ -651,7 +637,6 @@ public camera_grenade_set(id)
   }
   
   camera_grenade_bits |= (1 << id-1);
-  player_fixangle[id] = true;
 
   return PLUGIN_HANDLED;
 }
@@ -899,21 +884,24 @@ public camera_ent_flag_blue(id)
 public camera_ent_unset(id)
 {
   camera_ent_to_follow[id] = 0;
+  player_fixangle[id] = false;
 }
 
 public camera_follow_c4(id, c4_ent)
 {
+  if (c4_ent != entity_c4 && is_valid_ent(entity_c4))
+  {
+    DEBUG(id, print_chat, "(camera_follow_c4) c4_ent: %d, entity_c4: %d", c4_ent, entity_c4);
+    c4_ent = entity_c4;
+  }
+
   if (is_user_alive(c4_ent))
   {
     new holder = c4_ent;
-    new spectated = entity_get_int(id, EV_INT_iuser1);
     
     camera_specmode(id, OBS_IN_EYE);
+    camera_follow(id, holder);
     
-    if (spectated != holder)
-    {
-      camera_follow(id, holder);
-    }
     return PLUGIN_HANDLED;
   }
   
@@ -957,10 +945,7 @@ camera_follow_ent(id, ent, fixangle=0, Float:distance=200.0, Float:height=60.0)
   entity_get_vector(ent, EV_VEC_origin, ent_origin);
   
   xs_vec_copy(ent_origin, player_origin);
-  
   entity_get_vector(id, EV_VEC_v_angle, player_angles);
-
-  player_angles[0] = 0.0;
 
   angle_vector(player_angles, ANGLEVECTOR_FORWARD, v_forward);
   
@@ -990,7 +975,7 @@ camera_follow_ent(id, ent, fixangle=0, Float:distance=200.0, Float:height=60.0)
     new Float:dir[3];
     xs_vec_sub(ent_origin, player_origin, dir);
     vector_to_angle(dir, player_angles);
-
+    
     player_angles[0] *= -1.0;
     
     entity_set_vector(id, EV_VEC_angles, player_angles);
@@ -1102,7 +1087,7 @@ public event_player_killed(victim, killer)
   // and this variable disables the "specmode" command until respawned.
   // https://github.com/s1lentq/ReGameDLL_CS/blob/8d6bf017f5c63efdb83b91b58f51f40c539ff10f/regamedll/dlls/player.cpp#L2017
   // https://github.com/s1lentq/ReGameDLL_CS/blob/6fc1c2ff84b917cc086e664ebd4ab7e18f30a043/regamedll/dlls/client.cpp#L3188
-  
+
   set_ent_data(victim, "CBasePlayer", "m_canSwitchObserverModes", 1);
     
   if (!is_user_alive(killer) || !camera_enabled_bits)
