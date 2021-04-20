@@ -1,3 +1,6 @@
+// AdvancedObserver by lonewolf <igorkelvin@gmail.com>
+// https://github.com/igorkelvin/amxx-plugins
+
 #include <amxmodx>
 #include <hamsandwich>
 #include <cstrike>
@@ -8,7 +11,7 @@
 #include <fun>
 
 #define MOD_TITLE   "AdvancedObserver"
-#define MOD_VERSION "0.4.14"
+#define MOD_VERSION "0.4.15"
 #define MOD_AUTHOR  "lonewolf"
 
 #define DEBUG_ENABLED true
@@ -23,7 +26,7 @@
 
 #define USER_ENABLED(%1)           (camera_enabled_bits & (1 << (%1)-1))
 #define IS_CAMERA_GRENADE_SET(%1)  (camera_grenade_bits & (1 << (%1)-1))
-#define IS_THIS_GRENADE_C4(%1)     (get_pdata_int((%1), 96) & (1 << 8))
+#define IS_THIS_GRENADE_C4(%1)     (get_ent_data((%1), "CGrenade", "m_bIsC4"))
 #define IS_THIS_A_POPPED_SMOKE(%1) (get_ent_data((%1), "CGrenade", "m_SGSmoke"))
 
 // https://github.com/s1lentq/ReGameDLL_CS/blob/efb06a7a201829bdbe13218bc5f5342e1f2ed8f1/regamedll/pm_shared/pm_shared.h#L66
@@ -60,6 +63,7 @@ new Float:next_action[MAX_PLAYERS+1];
 new player_aimed[MAX_PLAYERS+1];
 
 new bool:player_move_to_eyes[MAX_PLAYERS+1];
+new bool:player_fixangle[MAX_PLAYERS+1];
 
 new camera_hooked[MAX_PLAYERS + 1];
 new camera_grenade_to_follow[MAX_PLAYERS+1];
@@ -159,7 +163,7 @@ public event_plantedthebomb()
   new is_c4 = 0;
   while((c4_ent = find_ent_by_class(c4_ent, "grenade")))
   {
-    is_c4 = get_ent_data(c4_ent, "CGrenade", "m_bIsC4");
+    is_c4 = IS_THIS_GRENADE_C4(c4_ent);
     if (is_c4)
     {
       break;
@@ -405,9 +409,14 @@ public client_PostThink(id)
   
   // DEBUG(1, print_chat, "#%d OWNER: %s[%d]", grenade, target_name, grenade_owner);
   // camera_follow_grenade(id, grenade);
-  
-  
-  camera_follow_ent(id, grenade);
+
+  new Float:velocity[3];
+  new Float:speed;
+  entity_get_vector(grenade, EV_VEC_velocity, velocity);
+  speed = xs_vec_len(velocity);
+
+  camera_follow_ent(id, grenade, player_fixangle[id], 100 + speed / 5, 10.0);
+  player_fixangle[id] = false;
   
   return PLUGIN_CONTINUE;
 }
@@ -642,7 +651,8 @@ public camera_grenade_set(id)
   }
   
   camera_grenade_bits |= (1 << id-1);
-  
+  player_fixangle[id] = true;
+
   return PLUGIN_HANDLED;
 }
 
@@ -837,6 +847,7 @@ public camera_ent_c4(id)
   }
   
   camera_ent_to_follow[id] = c4;
+  player_fixangle[id] = true;
   
   return PLUGIN_HANDLED;
 }
@@ -858,6 +869,7 @@ public camera_ent_flag_red(id)
   }
   
   camera_ent_to_follow[id] = flag;
+  player_fixangle[id] = true;
   
   return PLUGIN_HANDLED;
 }
@@ -878,6 +890,7 @@ public camera_ent_flag_blue(id)
   }
   
   camera_ent_to_follow[id] = flag;
+  player_fixangle[id] = true;
   
   return PLUGIN_HANDLED;
 }
@@ -904,8 +917,9 @@ public camera_follow_c4(id, c4_ent)
     return PLUGIN_HANDLED;
   }
   
-  camera_follow_ent(id, c4_ent);
-  
+  camera_follow_ent(id, c4_ent, player_fixangle[id]);
+  player_fixangle[id] = false;
+
   return PLUGIN_HANDLED;
 }
 
@@ -926,30 +940,33 @@ public camera_follow_flag(id, flag)
     return PLUGIN_HANDLED;
   }
   
-  camera_follow_ent(id, flag);
-  
+  camera_follow_ent(id, flag, player_fixangle[id]);
+  player_fixangle[id] = false;
+
   return PLUGIN_HANDLED;
 }
 
-public camera_follow_ent(id, ent)
+camera_follow_ent(id, ent, fixangle=0, Float:distance=200.0, Float:height=60.0)
 {
   camera_specmode(id, OBS_ROAMING);
   
   new Float:ent_origin[3];
   new Float:player_origin[3];
   new Float:player_angles[3];
-  new Float:player_angle_vector[3];
+  new Float:v_forward[3];
   entity_get_vector(ent, EV_VEC_origin, ent_origin);
   
   xs_vec_copy(ent_origin, player_origin);
   
-  entity_get_vector(id, EV_VEC_angles, player_angles);
+  entity_get_vector(id, EV_VEC_v_angle, player_angles);
+
+  player_angles[0] = 0.0;
+
+  angle_vector(player_angles, ANGLEVECTOR_FORWARD, v_forward);
   
-  angle_vector(player_angles, ANGLEVECTOR_FORWARD, player_angle_vector);
-  
-  player_origin[0] -= player_angle_vector[0] * 200;
-  player_origin[1] -= player_angle_vector[1] * 200;
-  player_origin[2] += 60;
+  player_origin[0] -= v_forward[0] * distance;
+  player_origin[1] -= v_forward[1] * distance;
+  player_origin[2] += height;
   
   new trace;
   new Float:fraction;
@@ -962,18 +979,19 @@ public camera_follow_ent(id, ent)
   
   if (fraction < 1.0)
   {
-    player_origin[0] += player_angle_vector[0] * 200 * (1 - fraction);
-    player_origin[1] += player_angle_vector[1] * 200 * (1 - fraction);
+    player_origin[0] += v_forward[0] * distance * (1 - (fraction * 0.9));
+    player_origin[1] += v_forward[1] * distance * (1 - (fraction * 0.9));
   }
   
   entity_set_origin(id, player_origin);
   
-  new Float:pitch = player_angles[0];
-  if (pitch <= -10.0 || pitch >= 10.0)
+  if (fixangle)
   {
-    player_angles[0] = -3.0 * floatclamp(pitch, -10.0, 10.0)
-    
-    //DEBUG(id, print_chat, "%.3f %.3f", player_angles[0], pitch);
+    new Float:dir[3];
+    xs_vec_sub(ent_origin, player_origin, dir);
+    vector_to_angle(dir, player_angles);
+
+    player_angles[0] *= -1.0;
     
     entity_set_vector(id, EV_VEC_angles, player_angles);
     entity_set_vector(id, EV_VEC_v_angle, player_angles);
@@ -1092,31 +1110,23 @@ public event_player_killed(victim, killer)
     return HAM_IGNORED;
   }
   
-  
-  new spectators[32];
-  new spectators_count;
-  
-  get_players(spectators, spectators_count, "bc"); // connected only, dead only, ignore bot
-  
-  if (spectators_count < 1)
+  for (new id = 1; id <= MaxClients; ++id)
   {
-    return HAM_IGNORED;
-  }
+    if (is_user_alive(id) || is_user_bot(id))
+    {
+      continue;
+    }
 
-  for (new i = 0; i < spectators_count; ++i)
-  {
-    new spectator = spectators[i];
-    
-    if (!(camera_enabled_bits & (1 << spectator-1)))
+    if (!(camera_enabled_bits & (1 << id-1)))
     {
       continue;
     }
     
-    new spectated = entity_get_int(spectator, EV_INT_iuser2);
+    new spectated = entity_get_int(id, EV_INT_iuser2);
     
-    if (spectator != victim && spectator != killer && spectated == victim)
+    if (id != victim && id != killer && spectated == victim)
     {
-      camera_follow(spectator, killer);
+      camera_follow(id, killer);
     }
   }
   
