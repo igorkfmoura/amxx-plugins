@@ -227,18 +227,20 @@ public client_cmdStart(id)
     return PLUGIN_CONTINUE;
   }
   
-  #if defined DEBUG 
-  if (id != 1)
-  {
-    return PLUGIN_CONTINUE;
-  }
-  #endif // DEBUG
-
   new buttons    = get_usercmd(usercmd_buttons);
   new oldbuttons = get_user_oldbutton(id);
+  new pressed    = (buttons ^ oldbuttons) & buttons;
+  new released   = (buttons ^ oldbuttons) & oldbuttons;
   
-  new pressed = (buttons ^ oldbuttons) & buttons;
-  
+  if (pressed)
+  {
+    client_print(id, print_chat, "(client_cmdStart) pressed: %d", pressed);
+  }
+  if (released & IN_RELOAD)
+  {
+    camera_ent_unset(id);
+  }
+
   if (!(pressed & (IN_JUMP | IN_ATTACK | IN_ATTACK2 | IN_RELOAD)))
   {
     return PLUGIN_CONTINUE;
@@ -257,19 +259,23 @@ public client_cmdStart(id)
   // TODO: find a good forward to set this just one time
   set_ent_data_float(id, "CBasePlayer", "m_flNextObserverInput", get_gametime() + 1337.0);
 
+
   if (pressed & IN_JUMP)
   {
     next_spec_mode(id);
-    
-    return PLUGIN_CONTINUE;
   }
-
-  if (pressed & (IN_ATTACK | IN_ATTACK2))
+  else if (pressed & (IN_ATTACK | IN_ATTACK2))
   {
     new reverse = (pressed & IN_ATTACK2);
     find_next_player(id, reverse);
-    
-    return PLUGIN_CONTINUE;
+  }
+  else if (pressed & IN_RELOAD)
+  {
+    camera_ent_c4(id);
+  }
+  else if (pressed & IN_ALT1)
+  {
+    client_print(id, print_chat, "(client_cmdStart) IN_ALT1: %d", (pressed & IN_ALT1));
   }
 
   return PLUGIN_CONTINUE;
@@ -289,7 +295,7 @@ public next_spec_mode(id)
   }
 }
 
-public find_next_player(id, reverse)
+find_next_player(id, reverse, CsTeams:force_team=CS_TEAM_UNASSIGNED)
 {
   new dir = reverse ? -1 : 1;
   new current = get_ent_data_entity(id, "CBasePlayer", "m_hObserverTarget");
@@ -309,7 +315,7 @@ public find_next_player(id, reverse)
     {
       current = MaxClients;
     }
-    target = is_valid_target(id, current, same_team)
+    target = is_valid_target(id, current, same_team, force_team)
     if (target)
     {
       break;
@@ -352,7 +358,7 @@ public get_force_camera()
 }
 
 
-public is_valid_target(id, target, bool:same_team)
+is_valid_target(id, target, bool:same_team=false, CsTeams:team=CS_TEAM_UNASSIGNED)
 {
   if (!is_user_alive(target) || id == target)
   {
@@ -365,10 +371,13 @@ public is_valid_target(id, target, bool:same_team)
   new CsTeams:team_target = cs_get_user_team(target);
   new CsTeams:team_id     = cs_get_user_team(id);
 
-  if (obs_mode != OBS_NONE || 
-      effects & EF_NODRAW || 
-      (team_target != CS_TEAM_T && team_target != CS_TEAM_CT) ||
-      (same_team && (team_target != team_id && team_id != CS_TEAM_SPECTATOR)))
+  new bool:is_observer         = (obs_mode != OBS_NONE);
+  new bool:cannot_see_entities = bool:(effects & EF_NODRAW);
+  new bool:not_playing         = (team_target != CS_TEAM_T && team_target != CS_TEAM_CT);
+  new bool:not_in_same_team    = (same_team && (team_target != team_id && team_id != CS_TEAM_SPECTATOR));
+  new bool:not_in_wanted_team  = (team && (team_target != team));
+
+  if (is_observer || cannot_see_entities || not_playing || not_in_same_team || not_in_wanted_team)
   {
     return 0;
   }
