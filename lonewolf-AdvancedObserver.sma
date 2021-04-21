@@ -11,7 +11,7 @@
 #include <fun>
 
 #define MOD_TITLE   "AdvancedObserver"
-#define MOD_VERSION "0.4.18"
+#define MOD_VERSION "0.4.19"
 #define MOD_AUTHOR  "lonewolf"
 
 #define DEBUG_ENABLED true
@@ -1181,8 +1181,13 @@ public handle_obsdebug(id)
 
 public set_observer_crosshair(id, mode)
 {
-  message_begin(MSG_ONE, MSG_ID_CROSSHAIR, _, id);
-  write_byte(mode == OBS_ROAMING);
+  if (mode != OBS_ROAMING)
+  {
+    return;
+  }
+
+  message_begin(MSG_ONE_UNRELIABLE, MSG_ID_CROSSHAIR, _, id);
+  write_byte(1);
   message_end();
 }
 
