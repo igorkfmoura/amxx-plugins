@@ -31,7 +31,7 @@ public plugin_init()
 
   cvar_fallspeed = create_cvar("parachute_fallspeed", "60",  FCVAR_ARCHIVE, "<0-2000> Parachute fallspeed. Default: 60");
   cvar_noaccel   = create_cvar("parachute_noaccel",   "0",   FCVAR_ARCHIVE, "<0|1> Disable speed gain on parachute. Default: 0");
-  cvar_maxspeed  = create_cvar("parachute_maxspeed",  "600", FCVAR_ARCHIVE, "<0-2000> Parachute maxspeed. Default: 2000");
+  cvar_maxspeed  = create_cvar("parachute_maxspeed",  "2000", FCVAR_ARCHIVE, "<0-2000> Parachute maxspeed. Default: 2000");
 
   RegisterHam(Ham_Spawn, "player", "player_spawn", true);
 }

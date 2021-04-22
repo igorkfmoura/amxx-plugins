@@ -1,6 +1,8 @@
 // Enhanced MultiJump - lonewolf <igorkelvin@gmail.com>
 // https://github.com/igorkelvin/amxx-plugins
 //
+// Inspired by twistedeuphoria's 'MultiJump': https://forums.alliedmods.net/showthread.php?t=10159
+//
 // Good source of knowledge:
 // https://github.com/s1lentq/ReGameDLL_CS/blob/master/regamedll/pm_shared/pm_shared.cpp
 
@@ -11,7 +13,6 @@
 #define PLUGIN  "EnhancedMultiJump"
 #define VERSION "0.4"
 #define AUTHOR  "lonewolf"
-
 
 // https://github.com/s1lentq/ReGameDLL_CS/blob/f57d28fe721ea4d57d10c010d15d45f05f2f5bad/regamedll/pm_shared/pm_shared.cpp#L2477
 // https://github.com/s1lentq/ReGameDLL_CS/blob/f57d28fe721ea4d57d10c010d15d45f05f2f5bad/regamedll/pm_shared/pm_shared.cpp#L2487
