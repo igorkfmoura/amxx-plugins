@@ -108,7 +108,7 @@ public client_cmdStart(id)
     return PLUGIN_CONTINUE;
   }
   
-  new button     = get_usercmd(usercmd_buttons, button);
+  new button     = get_usercmd(usercmd_buttons);
   new oldbutton  = get_user_oldbutton(id);
   
   new just_released = (oldbutton ^ button) & oldbutton;
