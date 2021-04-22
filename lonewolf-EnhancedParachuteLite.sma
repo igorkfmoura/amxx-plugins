@@ -1,7 +1,7 @@
-// Parachute by lonewolf <igorkelvin@gmail.com>
+// EnhancedParachuteLite by lonewolf <igorkelvin@gmail.com>
 // https://github.com/igorkelvin/amxx-plugins
 //
-// Loosely based on CSRevo's Parachute Lite by Wilian M.
+// Based on CSRevo's Parachute Lite by Wilian M.
 
 #include <amxmodx>
 #include <engine>
