@@ -11,7 +11,7 @@
 #include <xs>
 
 #define PLUGIN  "EnhancedMultiJump"
-#define VERSION "0.4"
+#define VERSION "0.5"
 #define AUTHOR  "lonewolf"
 
 // https://github.com/s1lentq/ReGameDLL_CS/blob/f57d28fe721ea4d57d10c010d15d45f05f2f5bad/regamedll/pm_shared/pm_shared.cpp#L2477
@@ -58,13 +58,14 @@ public client_cmdStart(id)
   }
   
   new buttons = get_usercmd(usercmd_buttons, buttons);
-  
+
   if (!(buttons & IN_JUMP))
   {
     return PLUGIN_CONTINUE;
   }
   
-  if (get_entity_flags(id) & FL_ONGROUND)
+  new on_ladder = (entity_get_int(id, EV_INT_movetype) == MOVETYPE_FLY);
+  if (get_entity_flags(id) & FL_ONGROUND || on_ladder)
   {
     fuser2[id] = entity_get_float(id, EV_FL_fuser2);
     next_jump_time[id] = get_gametime() + JUMP_TIME_WAIT; 
@@ -79,7 +80,7 @@ public client_cmdStart(id)
   
   ready_to_jump[id]  = true;
   
-  return PLUGIN_HANDLED;
+  return PLUGIN_CONTINUE;
 }
 
 
@@ -90,7 +91,8 @@ public client_PostThink(id)
     return PLUGIN_CONTINUE;
   }
   
-  if (get_entity_flags(id) & FL_ONGROUND)
+  new on_ladder = (entity_get_int(id, EV_INT_movetype) == MOVETYPE_FLY);
+  if (get_entity_flags(id) & FL_ONGROUND || on_ladder)
   {
     ready_to_jump[id] = false;
     airjumps[id]      = get_pcvar_num(pcvar_maxjumps);
