@@ -65,15 +65,25 @@ new player_aimed[MAX_PLAYERS+1];
 new bool:player_move_to_eyes[MAX_PLAYERS+1];
 new bool:player_fixangle[MAX_PLAYERS+1];
 
-enum
+
+enum Direction
 {
-  NONE,
+  NO_DIRECTION = 0,
+  RIGHT,
+  LEFT,
+  FORWARD,
+  BACK
+};
+
+enum Entities
+{
+  NO_ENTITY = 0,
   C4,
   FLAG_RED,
   FLAG_BLUE
 };
 
-new player_follow[MAX_PLAYERS+1];
+new Entities:player_follow[MAX_PLAYERS+1];
 
 new camera_hooked[MAX_PLAYERS + 1];
 new camera_grenade_to_follow[MAX_PLAYERS+1];
@@ -91,7 +101,7 @@ public plugin_init()
   register_plugin(MOD_TITLE, MOD_VERSION, MOD_AUTHOR)
   
   register_clcmd("say /obs",      "handle_obs");
-  register_clcmd("say /obsdebug", "handle_obsdebug");
+  register_clcmd("say /obsdebug", "handle_obsdebug", ADMIN_CVAR);
   
   register_clcmd("+camera_c4",  "camera_ent_c4");
   register_clcmd("-camera_c4",  "camera_ent_unset");
@@ -151,6 +161,7 @@ public event_droppedthebomb()
   set_task(0.1, "event_droppedthebomb_delayed", 252);
 }
 
+
 public event_droppedthebomb_delayed()
 {
   new c4_ent = find_ent_by_class(0, "weapon_c4");
@@ -161,6 +172,7 @@ public event_droppedthebomb_delayed()
     return;
   }
   
+
   new weaponbox = entity_get_edict(c4_ent, EV_ENT_owner);
   if (is_user_connected(weaponbox))
   {
@@ -223,16 +235,7 @@ public debug_print(id)
   }
 }
 
-enum Direction
-{
-  NONE,
-  RIGHT,
-  LEFT,
-  FORWARD,
-  BACK
-};
 
-// When entering OBS_ROAMING make observer start pointing to last target's 'v_angle'
 public client_cmdStart(id)
 {
   if (is_user_alive(id) || !USER_ENABLED(id))
@@ -293,19 +296,19 @@ public client_cmdStart(id)
     {
       if (pressed & IN_MOVERIGHT)
       {
-        find_next_player_direction(id, RIGHT);
+        find_next_player_direction(id, RIGHT, .maxdistance=1000.0);
       }
       else if (pressed & IN_MOVELEFT)
       {
-        find_next_player_direction(id, LEFT);
+        find_next_player_direction(id, LEFT, .maxdistance=1000.0);
       }
       else if (pressed & IN_FORWARD)
       {
-        find_next_player_direction(id, FORWARD);
+        find_next_player_direction(id, FORWARD, .maxdistance=1000.0);
       }
       else if (pressed & IN_BACK)
       {
-        find_next_player_direction(id, BACK);
+        find_next_player_direction(id, BACK, .maxdistance=1000.0);
       }
     }
   }
@@ -351,7 +354,7 @@ find_next_player(id, reverse, CsTeams:force_team=CS_TEAM_UNASSIGNED)
     {
       current = MaxClients;
     }
-    target = is_valid_target(id, current, same_team, force_team)
+    target = is_valid_target(id, current, same_team, force_team);
     if (target)
     {
       break;
@@ -375,9 +378,11 @@ find_next_player(id, reverse, CsTeams:force_team=CS_TEAM_UNASSIGNED)
 find_next_player_direction(id, Direction:dir, Float:maxdistance = 500.0, CsTeams:force_team=CS_TEAM_UNASSIGNED)
 {
   new current = get_ent_data_entity(id, "CBasePlayer", "m_hObserverTarget");
-  new CsTeams:team = cs_get_user_team(id);
-  new bool:same_team = get_force_camera() != CAMERA_MODE_SPEC_ANYONE && team != CS_TEAM_SPECTATOR;
-  
+  if (!is_valid_ent(current))
+  {
+    return 0;
+  } 
+
   new Float:id_origin[3];
   entity_get_vector(current, EV_VEC_origin, id_origin);
 
@@ -395,7 +400,7 @@ find_next_player_direction(id, Direction:dir, Float:maxdistance = 500.0, CsTeams
   new Float:direction[3];
   switch (dir)
   {
-    case NONE:
+    case NO_DIRECTION:
     {
       return closest;
     }
@@ -419,14 +424,15 @@ find_next_player_direction(id, Direction:dir, Float:maxdistance = 500.0, CsTeams
     }
   }
 
+  new CsTeams:team = cs_get_user_team(id);
+  new bool:same_team = get_force_camera() != CAMERA_MODE_SPEC_ANYONE && team != CS_TEAM_SPECTATOR;
+
   for (new target = 1; target <= MaxClients; ++target)
   {
-    // DEBUG(0, print_chat, "(find_next_player_direction) 0 - id: %d, current: %d, target: %d", id, current, target);
     if (id == target || target == current || !is_user_alive(target))
     {
       continue;
     }
-    // DEBUG(0, print_chat, "(find_next_player_direction) 1 - target: %d", target);
 
     target = is_valid_target(id, target, same_team, force_team);
 
@@ -439,7 +445,6 @@ find_next_player_direction(id, Direction:dir, Float:maxdistance = 500.0, CsTeams
     entity_get_vector(target, EV_VEC_origin, target_origin);
 
     new Float:distance = xs_vec_distance(id_origin, target_origin);
-    // DEBUG(0, print_chat, "(find_next_player_direction) 2 - target: %d, distance: %f", target, distance);
 
     if (distance > maxdistance || distance > closest_distance)
     {
@@ -451,10 +456,6 @@ find_next_player_direction(id, Direction:dir, Float:maxdistance = 500.0, CsTeams
     
     new Float:cosine = xs_vec_dot(target_origin, direction);
     new Float:angle = floatacos(cosine, degrees);
-
-    static name[MAX_NAME_LENGTH];
-    get_user_name(target, name, charsmax(name));
-    // DEBUG(0, print_chat, "(find_next_player_direction) target: (%02d) %s, distance: %.0f, cosine: %.2f, angle: %.1f°", target, name, distance, cosine, angle);
     
     if (angle <= 45.0)
     {
@@ -561,11 +562,11 @@ public client_PostThink(id)
   {
     camera_grenade_to_follow[id] = 0;
     
-    new follow = player_follow[id];
+    new Entities:follow = player_follow[id];
 
     switch (follow)
     {
-      case NONE:      {}
+      case NO_ENTITY: {}
       case C4:        camera_follow_c4(id);
       case FLAG_RED:  camera_follow_flag(id, follow);
       case FLAG_BLUE: camera_follow_flag(id, follow);
@@ -882,21 +883,11 @@ public task_check_spec_aiming(task_id)
     return;
   }
   
-  new spectators[32];
-  new spectators_count;
-  
-  get_players(spectators, spectators_count, "bc"); // connected only, dead only, ignore bot
-  
-  if (spectators_count < 1)
+  for (new i = 1; i <= MaxClients; ++i)
   {
-    return;
-  }
-  
-  for (new i = 0; i < spectators_count; ++i)
-  {
-    new spectator = spectators[i];
+    new spectator = i;
     
-    if (!(camera_enabled_bits & (1 << spectator-1)))
+    if (!(camera_enabled_bits & (1 << spectator-1)) || is_user_alive(spectator))
     {
       continue;
     }
@@ -927,9 +918,9 @@ public task_check_spec_aiming(task_id)
 
     player_aimed[spectator] = ent;
     
-    new const team_names[CsTeams][] = {"", "TR", "CT", "SPECTATOR"}; 
+    new const team_names[CsTeams][] = {"", "TR", "CT", "SPECTATOR"};
 
-    set_hudmessage(colors[team][0], colors[team][1], colors[team][2], -1.0, 0.52, 0, 6.0, 0.1, 0.1, 0.1, -1);
+    set_hudmessage(colors[team][0], colors[team][1], colors[team][2], -1.0, 0.52, 0, 6.0, 0.15, 0.1, 0.1, -1);
     ShowSyncHudMsg(spectator, hudsync1, "%s: %s^nHealth: %d%%", team_names[team], player_name, health);
     
     if (camera_hooked[spectator])
@@ -1009,7 +1000,7 @@ public camera_ent_flag_blue(id)
 
 public camera_ent_unset(id)
 {
-  player_follow[id] = NONE;
+  player_follow[id]   = NO_ENTITY;
   player_fixangle[id] = false;
 }
 
@@ -1036,7 +1027,7 @@ public camera_follow_c4(id)
   return PLUGIN_HANDLED;
 }
 
-public camera_follow_flag(id, type)
+public camera_follow_flag(id, Entities:type)
 {
   new flag;
 
