@@ -154,24 +154,20 @@ public client_PostThink(id)
     return PLUGIN_CONTINUE;
   }
   
+  new id_original = id;
+  new bool:is_spectator = false;
+
   if (!is_user_alive(id) && debug_is_enabled && (user_enabled_speed[id] || is_user_admin(id)))
-  {    
+  {
     new target = entity_get_int(id, EV_INT_iuser2);
     
     if (!is_user_alive(target))
     {
       return PLUGIN_CONTINUE;
     }
-    
-    new Float:velocity[3];
-    new Float:speed;
-    
-    entity_get_vector(target, EV_VEC_velocity, velocity);
-    speed = xs_vec_len_2d(velocity);
-    
-    show_speed(id, speed, maxspeed);
-    
-    return PLUGIN_CONTINUE;
+
+    id = target;
+    is_spectator = true;
   }
   
   new user_flags = get_entity_flags(id);
@@ -179,8 +175,8 @@ public client_PostThink(id)
 
   if(user_flags & FL_ONGROUND || on_ladder)
   {
-    just_surfed[id] = false;
-    user_oldspeed[id] = 0.0;
+    just_surfed[id_original] = false;
+    user_oldspeed[id_original] = 0.0;
     
     return PLUGIN_CONTINUE;
   }
@@ -192,7 +188,7 @@ public client_PostThink(id)
   new tag[10];
   tag = tags[AIR];
 
-  just_double_ducked[id] = false;
+  just_double_ducked[id_original] = false;
     
   new Float:velocity[3];
   new Float:speed;
@@ -202,22 +198,22 @@ public client_PostThink(id)
   
   if (player_ducked)
   {
-    player_maxspeed   = duckspeed;
-    user_oldspeed[id] = speed;
+    player_maxspeed = duckspeed;
+    user_oldspeed[id_original] = speed;
 
     tag = tags[DDUCK];
   }
   else if (just_surfed[id] || is_user_surfing(id))
   {
     disable_acceleration = (noaccel_flags & NOACCEL_SURF);
-    player_maxspeed      = surfspeed;
-    just_surfed[id]      = true;
-
+    player_maxspeed = surfspeed;
+    
+    just_surfed[id_original] = true;
     tag = tags[SURF];
   }
   else if (entity_get_int(id, EV_INT_waterlevel))
   {
-    just_surfed[id] = false;
+    just_surfed[id_original] = false;
     
     if (!(get_user_button(id) & IN_JUMP))
     {
@@ -244,25 +240,22 @@ public client_PostThink(id)
     player_maxspeed = user_oldspeed[id];
   }
   
-  if (speed <= player_maxspeed)
+  if (!is_spectator && (speed >= player_maxspeed))
   {
-    show_speed(id, speed, player_maxspeed, tag)
-    user_oldspeed[id] = speed;
-    
-    return PLUGIN_CONTINUE;
+    new Float:c;
+  
+    c = player_maxspeed / speed;
+    speed *= c;
+
+    velocity[0] *= c;
+    velocity[1] *= c;
+
+    entity_set_vector(id, EV_VEC_velocity, velocity);
   }
   
-  new Float:c;
-  
-  c = player_maxspeed / speed;
-  speed *= c;
-  user_oldspeed[id] = speed;
-  
-  velocity[0] *= c;
-  velocity[1] *= c;
-  
-  entity_set_vector(id, EV_VEC_velocity, velocity);
-  show_speed(id, speed, player_maxspeed, tag)
+  user_oldspeed[id_original] = speed;
+
+  show_speed(id_original, speed, player_maxspeed, tag)
   
   return PLUGIN_CONTINUE;
 }
