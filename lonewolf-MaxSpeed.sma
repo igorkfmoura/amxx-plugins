@@ -8,14 +8,17 @@
 #include <xs>
 
 #define PLUGIN  "MaxSpeed"
-#define VERSION "0.10"
+#define VERSION "0.11"
 #define AUTHOR  "lonewolf"
+
+#define PREFIX "^4[MaxSpeed]^1"
 
 new cvar_enabled;
 new cvar_maxspeed;
 new cvar_surfspeed;
 new cvar_duckspeed;
 new cvar_swimspeed;
+new cvar_usespeed;
 new cvar_debug;
 new cvar_noaccel;
 
@@ -24,23 +27,25 @@ new Float:maxspeed;
 new Float:surfspeed;
 new Float:duckspeed;
 new Float:swimspeed;
+new Float:usespeed;
 
 new debug_is_enabled;
 new noaccel_flags;
 
-new Float:user_oldspeed[33];
-new Float:hud_time[33];
+new Float:user_oldspeed[MAX_PLAYERS+1];
+new Float:hud_time[MAX_PLAYERS+1];
 
-new bool:just_double_ducked[33];
-new bool:just_surfed[33];
-new bool:user_enabled_speed[33];
+new bool:just_double_ducked[MAX_PLAYERS+1];
+new bool:just_surfed[MAX_PLAYERS+1];
+new bool:user_enabled_speed[MAX_PLAYERS+1];
 
 enum State
 {
   AIR,
   DDUCK,
   WATER,
-  SURF
+  SURF,
+  USE
 };
 
 new tags[State][10] =
@@ -48,27 +53,31 @@ new tags[State][10] =
   " ",
   "[DUCK]",
   "[WATER]",
-  "[SURF]"
+  "[SURF]",
+  "[+USE]"
 }
 
-enum
+enum (<<= 1)
 {
   NOACCEL_AIR  = 1,
-  NOACCEL_SWIM = 2,
-  NOACCEL_SURF = 4
+  NOACCEL_SWIM,
+  NOACCEL_SURF,
+  NOACCEL_USE
 };
+
 
 public plugin_init()
 {
   register_plugin(PLUGIN, VERSION, AUTHOR);
   
-  cvar_enabled   = create_cvar("amx_maxspeed_enabled",   "1",   _, "<0/1> Disable/Enable MaxSpeed Plugin");
-  cvar_maxspeed  = create_cvar("amx_maxspeed",           "400", _, "<0-2000> Maximum airspeed");
+  cvar_enabled   = create_cvar("amx_maxspeed_enabled",   "1",    _, "<0/1> Disable/Enable MaxSpeed Plugin");
+  cvar_maxspeed  = create_cvar("amx_maxspeed",           "400",  _, "<0-2000> Maximum airspeed");
   cvar_surfspeed = create_cvar("amx_maxspeed_surfspeed", "2000", _,"<0-2000> Maximum speed while surfing");
-  cvar_duckspeed = create_cvar("amx_maxspeed_duckspeed", "300", _, "<0-2000> Maximum speed after double-ducking");
-  cvar_swimspeed = create_cvar("amx_maxspeed_swimspeed", "400", _, "<0-2000> Maximum speed on water");
-  cvar_debug     = create_cvar("amx_maxspeed_debug",     "0",   _, "<0/1> Enables /speed command");
-  cvar_noaccel   = create_cvar("amx_maxspeed_noaccel",   "0",   _, "<0-7> Bitsum: 1-Airstrafe noaccel, 2-Swim noaccel, 4-Surf noaccel");
+  cvar_duckspeed = create_cvar("amx_maxspeed_duckspeed", "300",  _, "<0-2000> Maximum speed after double-ducking");
+  cvar_swimspeed = create_cvar("amx_maxspeed_swimspeed", "400",  _, "<0-2000> Maximum speed on water");
+  cvar_usespeed  = create_cvar("amx_maxspeed_usespeed",  "400",  _, "<0-2000> Maximum speed holding +use");
+  cvar_debug     = create_cvar("amx_maxspeed_debug",     "0",    _, "<0/1> Enables /speed command");
+  cvar_noaccel   = create_cvar("amx_maxspeed_noaccel",   "0",    _, "<0-15> Bitsum: 1-Airstrafe noaccel, 2-Swim noaccel, 4-Surf noaccel, 8-Use noaccel");
   
   bind_pcvar_num(cvar_enabled,     enabled);
   bind_pcvar_num(cvar_debug,       debug_is_enabled);
@@ -77,6 +86,7 @@ public plugin_init()
   bind_pcvar_float(cvar_surfspeed, surfspeed);
   bind_pcvar_float(cvar_duckspeed, duckspeed);
   bind_pcvar_float(cvar_swimspeed, swimspeed);
+  bind_pcvar_float(cvar_usespeed,  usespeed);
   
   register_clcmd("say /speed", "handle_speed");
   
@@ -95,7 +105,7 @@ public handle_speed(id)
   if (get_pcvar_num(cvar_debug))
   {
     user_enabled_speed[id] = !user_enabled_speed[id];
-    client_print(id, print_chat, "Maxspeed plugin speed %s.", user_enabled_speed[id] ? "enabled" : "disabled");
+    client_print_color(id, print_team_default, "%s speed debug %s.", PREFIX, user_enabled_speed[id] ? "enabled" : "disabled");
   }
 }
 
@@ -219,6 +229,13 @@ public client_PostThink(id)
 
       tag = tags[WATER];
     }
+  }
+  else if (get_user_button(id) & IN_USE)
+  {
+    disable_acceleration = (noaccel_flags & NOACCEL_USE);
+    player_maxspeed      = usespeed;
+
+    tag = tags[USE];
   }
   
   if (disable_acceleration && (user_oldspeed[id] > 0.0))
