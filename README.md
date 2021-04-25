@@ -33,7 +33,7 @@ Brings many quality-of-life features for spectators/observers focused on Clan-vs
 
 ### [AimPrecision](./lonewolf-AimPrecision.sma)
 
-Reversed enginered Counter-Strike's pseudo random for shot spread and precision realtime visualization with laser beams for training purposes. Implemented for AK-47 and Deagle only. (Why would you use anything else?)
+Reversed enginered Counter-Strike's pseudo random for shot spread and precision real time visualization with laser beams for training purposes. Implemented for AK-47 and Deagle only. (Why would you use anything else?)
 
 | Command | Description |
 | --- | --- |
@@ -49,16 +49,17 @@ Tracks user's Deagle shot precision and timing, informing if shot was in perfect
 
 ### [EnhancedMultiJump](./lonewolf-EnhancedMultiJump.sma)
 
-Based on twistedeuphoria's [MultiJump](https://forums.alliedmods.net/showthread.php?t=10159) this plugin uses original Counter Strike's [jump implementation](https://github.com/s1lentq/ReGameDLL_CS/blob/e86284b08cb7dcae3c66cc08262e88d7b81dbafc/regamedll/pm_shared/pm_shared.cpp#L2345) to make multijumps that behave like originals.
+Based on twistedeuphoria's [MultiJump](https://forums.alliedmods.net/showthread.php?t=10159) this plugin uses Counter Strike's [jump implementation](https://github.com/s1lentq/ReGameDLL_CS/blob/e86284b08cb7dcae3c66cc08262e88d7b81dbafc/regamedll/pm_shared/pm_shared.cpp#L2345) to make multi jumps that behave like real jumps.
 
 #### Features:
 
-* Added a 0.2 seconds delay to enable jumping with mouse scroll;
-* Proper setting player's fuser2 after all jumps like original jump;
-* Auto-jumping holding space;
-* Auto-compensating vertical velocity to stardardize jump height independently of player's FPS or bad timing;
-* Removed randomness of jump height;
-* Improved airjump flexibility by enabled it even if player didn't jump before leaving ground, like falling on ledge or double ducking;
+* User now can smoothly jump with mouse scroll without accidently triggering multi jumps;
+* Air jumps don't just throw the player up like the original, it works like a normal CS 1.6 jump, correctly setting player's friction/fuser2;
+* Auto-jumping with maximum height just by holding spacebar;
+* Auto-compensating vertical velocity to stardardize jump height independently of custom gravity, player's FPS or bad timing;
+* No jump height randomness like the original;
+* Improved airjump flexibility by enabling it even if player didn't jump before leaving ground, like falling on ledge or double ducking;
+* Proper handling of ladder jump, further improving the range of movements;
 
 | Cvar | Default | Description |
 | --- | --- | --- |
@@ -70,13 +71,17 @@ Parachute plugin based on CSRevo's [Parachute Lite](https://www.csrevo.com/2019/
 
 | Cvar | Default | Description |
 | --- | --- | --- |
-| parachute_fallspeed | "60" | \<0-2000\> Parachute fallspeed. Default: 60 |
-| parachute_noaccel | "0" | \<0\|1\> Disable speed gain on parachute. Default: 0 |
-| parachute_maxspeed | "2000" | \<0-2000\> Parachute maxspeed. Default: 2000 |
+| parachute_fallspeed | "60" | \<0-2000\> Parachute fallspeed. |
+| parachute_noaccel | "0" | \<0\|1\> Disable speed gain on parachute. |
+| parachute_maxspeed | "2000" | \<0-2000\> Parachute maxspeed. |
 
 ### [MaxSpeed](./lonewolf-MaxSpeed.sma)
 
 Anti-acceleration abuse plugin, limits the maximum speed or even acceleration in many different scenarios in a smooth fashion while maintaining the velocity direction for better user experience.
+
+| Command | Description |
+| --- | --- |
+| say /speed | Enables real time speed and max speed info for debug purposes |
 
 | Cvar | Default | Description |
 | --- | --- | --- |
@@ -85,7 +90,8 @@ Anti-acceleration abuse plugin, limits the maximum speed or even acceleration in
 | amx_maxspeed_surfspeed | "2000" | \<0-2000\> Maximum speed while surfing |
 | amx_maxspeed_duckspeed | "300" | \<0-2000\> Maximum speed after double-ducking |
 | amx_maxspeed_swimspeed | "400" | \<0-2000\> Maximum speed on water |
-| amx_maxspeed_debug | "0" | \<0/1\> Enables /speed command |
+| amx_maxspeed_usespeed | "400" | \<0-2000\> Maximum speed holding +use, usually applied for parachute |
+| amx_maxspeed_debug | "0" | \<0/1\> Enables "say /speed" command |
 | amx_maxspeed_noaccel | "0" | \<0-7\> Bitsum: 1-Airstrafe noaccel \| 2-Swim noaccel \| 4-Surf noaccel |
 
 ### [QueryCvar](./lonewolf-QueryCvar.sma)
