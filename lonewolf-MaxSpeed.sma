@@ -175,8 +175,9 @@ public client_PostThink(id)
   }
   
   new user_flags = get_entity_flags(id);
-  
-  if(user_flags & FL_ONGROUND)
+  new on_ladder = (entity_get_int(id, EV_INT_movetype) == MOVETYPE_FLY);
+
+  if(user_flags & FL_ONGROUND || on_ladder)
   {
     just_surfed[id] = false;
     user_oldspeed[id] = 0.0;
