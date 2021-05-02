@@ -76,7 +76,7 @@ public plugin_init()
   cvar_duckspeed = create_cvar("amx_maxspeed_duckspeed", "300",  _, "<0-2000> Maximum speed after double-ducking");
   cvar_swimspeed = create_cvar("amx_maxspeed_swimspeed", "400",  _, "<0-2000> Maximum speed on water");
   cvar_usespeed  = create_cvar("amx_maxspeed_usespeed",  "400",  _, "<0-2000> Maximum speed holding +use");
-  cvar_debug     = create_cvar("amx_maxspeed_debug",     "0",    _, "<0/1> Enables /speed command");
+  cvar_debug     = create_cvar("amx_maxspeed_debug",     "0",    _, "<0/1> Enables ^"say /speed^" command");
   cvar_noaccel   = create_cvar("amx_maxspeed_noaccel",   "0",    _, "<0-15> Bitsum: 1-Airstrafe noaccel, 2-Swim noaccel, 4-Surf noaccel, 8-Use noaccel");
   
   bind_pcvar_num(cvar_enabled,     enabled);
