@@ -43,7 +43,7 @@ public swap_teams(admin)
   team_wins[CS_TEAM_T]  = get_gamerules_int("CHalfLifeMultiplay", "m_iNumTerroristWins");
   team_wins[CS_TEAM_CT] = get_gamerules_int("CHalfLifeMultiplay", "m_iNumCTWins");
   
-  client_print(0, print_chat, "TR:%d | CT:%d", team_wins[CS_TEAM_T], team_wins[CS_TEAM_CT]);
+  // client_print(0, print_chat, "TR:%d | CT:%d", team_wins[CS_TEAM_T], team_wins[CS_TEAM_CT]);
   for (new id = 1; id <= maxplayers; id++)
   {
     if (!is_user_connected(id))
@@ -59,9 +59,9 @@ public swap_teams(admin)
       
       new CsTeams:newteam = (team == CS_TEAM_T) ? CS_TEAM_CT : CS_TEAM_T;
       
-      new name[32];
-      get_user_name(id, name, charsmax(name));
-      client_print(0, print_chat, "[%02d] %s %s %d/%d", id, (team == CS_TEAM_T) ? "TR" : "CT", name, kills[id], deaths[id]);
+      // new name[32];
+      // get_user_name(id, name, charsmax(name));
+      // client_print(0, print_chat, "[%02d] %s %s %d/%d", id, (team == CS_TEAM_T) ? "TR" : "CT", name, kills[id], deaths[id]);
       
       user_silentkill(id);
       cs_set_user_team(id, newteam);
@@ -70,7 +70,7 @@ public swap_teams(admin)
     }
   }
   
-  client_print(0, print_chat, "Trocando lado!");
+  client_print_color(0, print_team_default, "^4[SwapTeams]^1 Trocando lado!");
   
   swapped_teams = true;
   server_cmd("sv_restart 1");
