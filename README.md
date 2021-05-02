@@ -12,6 +12,7 @@ Plugins made for [Counter Strike 1.6](https://store.steampowered.com/app/10/Coun
 * [Cameras](#Cameras) 
 * [EnhancedMultiJump](#EnhancedMultiJump) 
 * [EnhancedParachuteLite](#EnhancedParachuteLite) 
+* [EntitiesUtils](#EntitiesUtils) 
 * [MaxSpeed](#MaxSpeed) 
 * [QueryCvar](#QueryCvar) 
 * [SwapTeams](#SwapTeams) 
@@ -91,6 +92,14 @@ Parachute plugin based on CSRevo's [Parachute Lite](https://www.csrevo.com/2019/
 | parachute_fallspeed | "100" | \<0-2000\> Parachute fallspeed. |
 | parachute_noaccel | "0" | \<0\|1\> Disable speed gain on parachute. |
 | parachute_maxspeed | "2000" | \<0-2000\> Parachute maxspeed. |
+
+### [EntitiesUtils](./lonewolf-EntitiesUtils.sma)
+
+Work-in-progress plugin with useful entities info commands.
+
+| Command | Description |
+| --- | --- |
+| entities_list \<number\> | Print 30 entities's ID, Classname and Model starting from \<number\> |
 
 ### [MaxSpeed](./lonewolf-MaxSpeed.sma)
 
