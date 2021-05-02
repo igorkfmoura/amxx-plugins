@@ -42,7 +42,7 @@ enum
   CAMERA_MODE_SPEC_ONLY_FIRST_PERSON
 };
 
-static const FLAG_CLASSNAME[] = "ctf_flag"
+static const FLAG_CLASSNAME[] = "ctf_flag";
 static const Float:zeros[3] = {0.0, 0.0, 0.0};
     
 static const colors[CsTeams][3] = 
@@ -51,7 +51,7 @@ static const colors[CsTeams][3] =
   {255, 50,   0},
   {  0, 50, 255},
   {  0,  0,   0},
-}
+};
 
 new MSG_ID_SCREENFADE;
 new MSG_ID_CROSSHAIR;
@@ -142,8 +142,7 @@ public plugin_init()
   new task_id = 5032;
   set_task(5.0, "task_find_flag_holders", task_id); // delayed
   
-//   set_task(1.0, "debug_print", TASK_ID_DEBUG, .flags = "b");
-  
+  // set_task(1.0, "debug_print", TASK_ID_DEBUG, .flags = "b");
 }
 
 public event_pickedthebomb()
@@ -387,7 +386,7 @@ find_next_player_direction(id, Direction:dir, Float:maxdistance = 500.0, CsTeams
   entity_get_vector(current, EV_VEC_origin, id_origin);
 
   new Float:angles[3];
-  entity_get_vector(current, EV_VEC_angles, angles)
+  entity_get_vector(current, EV_VEC_v_angle, angles)
   
   angles[0] = 0.0;
   angles[2] = 0.0;
@@ -444,7 +443,9 @@ find_next_player_direction(id, Direction:dir, Float:maxdistance = 500.0, CsTeams
     new Float:target_origin[3];
     entity_get_vector(target, EV_VEC_origin, target_origin);
 
+    target_origin[2] *= 2.0; // Prioritize targets in the same height
     new Float:distance = xs_vec_distance(id_origin, target_origin);
+    target_origin[2] *= 0.5;
 
     if (distance > maxdistance || distance > closest_distance)
     {
@@ -527,7 +528,6 @@ is_valid_target(id, target, bool:same_team=false, CsTeams:team=CS_TEAM_UNASSIGNE
 
   return target;
 }
-
 
 public client_PostThink(id)
 {
@@ -746,30 +746,18 @@ public think_grenade(grenade)
     return HAM_IGNORED;
   }
   
-  new spectators[32];
-  new spectators_count;
-  
-  get_players(spectators, spectators_count, "bc"); // connected only, dead only, ignore bot
-  
-  if (spectators_count < 1)
+  for (new id = 0; id <= MaxClients; ++id)
   {
-    return HAM_IGNORED;
-  }
-  
-  for (new i = 0; i < spectators_count; ++i)
-  {
-    new spectator = spectators[i];
-    
-    if (!IS_CAMERA_GRENADE_SET(spectator))
+    if (!IS_CAMERA_GRENADE_SET(id) || is_user_alive(id))
     {
       continue;
     }
     
-    new target = get_ent_data_entity(spectator, "CBasePlayer", "m_hObserverTarget");
+    new target = get_ent_data_entity(id, "CBasePlayer", "m_hObserverTarget");
     
     if (target == grenade_owner)
     {
-      camera_grenade_to_follow[spectator] = grenade;
+      camera_grenade_to_follow[id] = grenade;
     }
   }
 
@@ -1155,6 +1143,11 @@ public handle_obs(id)
   {
     set_ent_data_float(id, "CBasePlayer", "m_flNextObserverInput", 0.0);
   }
+  else
+  {
+    new Float:now = get_gametime();
+    next_action[id] = now + 3.0;
+  }
 
   return PLUGIN_HANDLED;
 }
@@ -1230,6 +1223,9 @@ public event_player_killed(victim, killer)
   if (USER_ENABLED(victim))
   {
     set_ent_data(victim, "CBasePlayer", "m_canSwitchObserverModes", 1);
+    
+    new Float:now = get_gametime();
+    next_action[victim] = now + 3.0;
   }
     
   if (!is_user_alive(killer) || !camera_enabled_bits)
