@@ -29,7 +29,7 @@ public plugin_init()
 {
   register_plugin(PLUGIN, VERSION, AUTHOR)
 
-  cvar_fallspeed = create_cvar("parachute_fallspeed", "60",  FCVAR_ARCHIVE, "<0-2000> Parachute fallspeed. Default: 60");
+  cvar_fallspeed = create_cvar("parachute_fallspeed", "100",  FCVAR_ARCHIVE, "<0-2000> Parachute fallspeed. Default: 80");
   cvar_noaccel   = create_cvar("parachute_noaccel",   "0",   FCVAR_ARCHIVE, "<0|1> Disable speed gain on parachute. Default: 0");
   cvar_maxspeed  = create_cvar("parachute_maxspeed",  "2000", FCVAR_ARCHIVE, "<0-2000> Parachute maxspeed. Default: 2000");
 

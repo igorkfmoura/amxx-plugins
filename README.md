@@ -71,7 +71,7 @@ Parachute plugin based on CSRevo's [Parachute Lite](https://www.csrevo.com/2019/
 
 | Cvar | Default | Description |
 | --- | --- | --- |
-| parachute_fallspeed | "60" | \<0-2000\> Parachute fallspeed. |
+| parachute_fallspeed | "100" | \<0-2000\> Parachute fallspeed. |
 | parachute_noaccel | "0" | \<0\|1\> Disable speed gain on parachute. |
 | parachute_maxspeed | "2000" | \<0-2000\> Parachute maxspeed. |
 
