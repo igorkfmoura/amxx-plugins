@@ -118,7 +118,7 @@ Anti-acceleration abuse plugin, limits the maximum speed or even acceleration in
 | amx_maxspeed_swimspeed | "400" | \<0-2000\> Maximum speed on water |
 | amx_maxspeed_usespeed | "400" | \<0-2000\> Maximum speed holding +use, usually applied for parachute |
 | amx_maxspeed_debug | "0" | \<0/1\> Enables "say /speed" command |
-| amx_maxspeed_noaccel | "0" | \<0-7\> Bitsum: 1-Airstrafe noaccel \| 2-Swim noaccel \| 4-Surf noaccel |
+| amx_maxspeed_noaccel | "0" | \<0-15\> Bitsum: 1-Airstrafe noaccel, 2-Swim noaccel, 4-Surf noaccel, 8-Use noaccel |
 
 ### [QueryCvar](./lonewolf-QueryCvar.sma)
 
