@@ -9,6 +9,7 @@ Plugins made for [Counter Strike 1.6](https://store.steampowered.com/app/10/Coun
 * [AdvancedObserver](#AdvancedObserver) 
 * [AimPrecision](#AimPrecision) 
 * [AimTrainer](#AimTrainer) 
+* [Cameras](#Cameras) 
 * [EnhancedMultiJump](#EnhancedMultiJump) 
 * [EnhancedParachuteLite](#EnhancedParachuteLite) 
 * [MaxSpeed](#MaxSpeed) 
@@ -46,6 +47,22 @@ Tracks user's Deagle shot precision and timing, informing if shot was in perfect
 | Command | Description |
 | --- | --- |
 |say /aim | Enable/disable AimTrainer info |
+
+### [Cameras](./lonewolf-Cameras.sma)
+
+Easy to configure Fixed Cameras Teleports plugin for spectator usage with objective to dynamize matches' online streaming. Fully configurable by menu or by editing server's "maps/\<mapname\>.cameras" file, which is automatically generated when saved in-game by an admin with [ADMIN_CVAR](https://wiki.alliedmods.net/Adding_Admins_(AMX_Mod_X)#Access_Levels) flag. Perfect combo to [AdvancedSpectator](#AdvancedSpectator).
+
+| Command | Description |
+| --- | --- |
+| say /cam | Open Cameras' teleport menu |
+| say /cam \<number\> | Teleport to Camera \<number\> without menu prompt |
+| say /camcfg | Open Cameras' config menu |
+| +cameras_shift | Hold to add +10 to "say /cam" argument |
+
+| Cvar | Default | Description |
+| --- | --- | --- |
+| amx_cameras_enabled | "1" | \<0/1\> Disable/Enable Cameras Plugin |
+| amx_cameras_spec_only | "1" | \<0/1\> Only spectators can use Cameras |
 
 ### [EnhancedMultiJump](./lonewolf-EnhancedMultiJump.sma)
 
