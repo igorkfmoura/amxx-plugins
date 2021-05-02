@@ -106,7 +106,7 @@ public query_client(id, const cvar[], const value[], const param[])
   static name[MAX_NAME_LENGTH];
   get_user_name(id, name, charsmax(name));
 
-  client_print(admin, id, "%s %s: ^"%s^" is set to ^"%s^"", PREFIX_CONSOLE, name, cvar, value);
+  client_print(admin, print_console, "%s %s: ^"%s^" is set to ^"%s^"", PREFIX_CONSOLE, name, cvar, value);
 
   return PLUGIN_HANDLED;
 }  
