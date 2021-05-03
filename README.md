@@ -15,7 +15,7 @@ Plugins made for [Counter Strike 1.6](https://store.steampowered.com/app/10/Coun
 * [EntitiesUtils](#EntitiesUtils) 
 * [MaxSpeed](#MaxSpeed) 
 * [QueryCvar](#QueryCvar) 
-* [SwapTeams](#SwapTeams) 
+* [TeamUtils](#TeamUtils) 
 
 ### [AdvancedObserver](./lonewolf-AdvancedObserver.sma)
 
@@ -128,10 +128,11 @@ Admin command to query an user's config by id, user steam or nickname.
 | --- | --- |
 |query | query \<0 or id or name or authid\> \<cvar\> |
 
-### [SwapTeams](./lonewolf-SwapTeams.sma)
+### [TeamUtils](./lonewolf-TeamUtils.sma)
 
-Adds a simple admin command to restart the game and swap teams while keeping player's and team's scores. Guaranteed to keep player's scores but may not team's scores if there is another plugin controling it like jCTF or some PUG MIX plugins.
+Useful admins commands to swap or shuffle teams while keeping player's scores.
 
 | Command | Description |
 | --- | --- |
+| amx_shuffleteams | Shuffle teams and restart game keeping player's score |
 | amx_swapteams | Swap teams and restart game keeping player's score |
