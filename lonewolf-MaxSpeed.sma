@@ -8,7 +8,7 @@
 #include <xs>
 
 #define PLUGIN  "MaxSpeed"
-#define VERSION "0.11"
+#define VERSION "0.12"
 #define AUTHOR  "lonewolf"
 
 #define PREFIX "^4[MaxSpeed]^1"
@@ -157,8 +157,13 @@ public client_PostThink(id)
   new id_original = id;
   new bool:is_spectator = false;
 
-  if (!is_user_alive(id) && debug_is_enabled && (user_enabled_speed[id] || is_user_admin(id)))
+  if (!is_user_alive(id))
   {
+    if (!debug_is_enabled || !user_enabled_speed[id])
+    {
+      return PLUGIN_CONTINUE;
+    }
+
     new target = entity_get_int(id, EV_INT_iuser2);
     
     if (!is_user_alive(target))
