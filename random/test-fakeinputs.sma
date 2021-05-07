@@ -37,10 +37,10 @@ public print_menu(id)
 //   new ret = player_menu_info(1, menu, newmenu, page);
 //   client_print(1, print_chat, "(print_menu) (%02d) ret: %d, newmenu: %d, menu: %d", 1, ret, newmenu, menu);
   
-  get_user_menu(1, menu, keys);
+  get_user_menu(id, menu, keys);
   if (menu == menuid_fakeinput)
   {
-    client_print(1, print_chat, "(print_menu) (%02d) viewing menuid_fakeinput: %d", 1, menu);
+    client_print(id, print_chat, "(print_menu) (%02d) viewing menuid_fakeinput: %d", id, menu);
   }
 }
 
@@ -79,7 +79,7 @@ public menu_fakeinput(id)
 
 public menu_fakeinput_handler(id, key)
 {
-  key = (key + 1) % 10;
+  key = (key + 1);
   new slotcmd[7];
   formatex(slotcmd, charsmax(slotcmd), "slot%d", key);
 
