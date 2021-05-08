@@ -13,6 +13,7 @@ Plugins made for [Counter Strike 1.6](https://store.steampowered.com/app/10/Coun
 * [test-fakeinputs](#test-fakeinputs) 
 * [test-fov](#test-fov) 
 * [test-jctf_flag](#test-jctf_flag) 
+* [test-regex](#test-regex) 
 * [test-speed](#test-speed) 
 * [test-status-text2](#test-status-text2)
 
@@ -57,6 +58,15 @@ Changes player's fov on say command.
 ### [test-jctf_flag](./test-jctf_flag.sma)
 
 Implement a forward "jctf_flag" that shows how to hook flag events from [Digi's jCTF](https://github.com/OsweRRR/jCTF-by-Digi). 
+
+### [test-regex](./test-regex.sma)
+
+Simple regex example. Find tokens in "say" client command and echos back with replacements. On default settings echos back client saytext with pontuations replaces by "X".
+
+| Cvar | Default | Description |
+| --- | --- | --- |
+| amx_regex_find | "\[^a-zA-Z0-9 _\]" | Regex tokens to find in 'say' command |
+| amx_regex_replace | "X" | Replacement to tokens found |
 
 ### [test-speed](./test-speed.sma)
 
