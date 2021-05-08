@@ -10,6 +10,7 @@ Plugins made for [Counter Strike 1.6](https://store.steampowered.com/app/10/Coun
 * [AimPrecision](#AimPrecision) 
 * [AimTrainer](#AimTrainer) 
 * [Cameras](#Cameras) 
+* [EnhancedAutoDemo](#EnhancedAutoDemo)
 * [EnhancedMultiJump](#EnhancedMultiJump) 
 * [EnhancedParachuteLite](#EnhancedParachuteLite) 
 * [EntitiesUtils](#EntitiesUtils) 
@@ -64,6 +65,31 @@ Easy to configure Fixed Cameras Teleports plugin for spectator usage with object
 | --- | --- | --- |
 | amx_cameras_enabled | "1" | \<0/1\> Disable/Enable Cameras Plugin |
 | amx_cameras_spec_only | "1" | \<0/1\> Only spectators can use Cameras |
+
+### [EnhancedAutoDemo](./lonewolf-EnhancedAutoDemo.sma)
+
+\<WORK-IN-PROGRESS\>
+
+Made from scratch to be no-config-needed replacement for [Auto Demo Recorder](https://forums.alliedmods.net/showthread.php?p=770786) by IzI with the main objective of recording demos with unique filename for Clan Fights.
+
+Enhancements:
+* Configurable parameters on filename: clan prefix, timestamp, steamid, nickname and mapname;
+
+
+| Command | Description |
+| --- | --- |
+| amx_demo | Record demo of yourself |
+
+| Cvar | Default | Description |
+| --- | --- | --- |
+| amx_demo_auto | "1" | Record demo on client connect |
+| amx_demo_time | "0" | Append timestamp on demo filename |
+| amx_demo_map | "0" | Append mapname on demo filename |
+| amx_demo_steam | "0" | Append steamid on demo filename |
+| amx_demo_nick | "0" | Append nickname on demo filename |
+| amx_demo_notify | "1" | Notify user when recording |
+| amx_demo_name | "EnhancedAutoDemo" | Base prefix for demo filename |
+| amx_demo_prefix | "^4\[EnhancedAutoDemo\]^1" | Chat prefix |
 
 ### [EnhancedMultiJump](./lonewolf-EnhancedMultiJump.sma)
 
