@@ -6,9 +6,10 @@
 
 #include <amxmodx>
 #include <engine>
+#include <regex>
 
 #define PLUGIN  "lonewolf-EnhancedAutoDemo"
-#define VERSION "0.1"
+#define VERSION "0.2"
 #define AUTHOR  "lonewolf"
 
 enum Cvars 
@@ -88,7 +89,6 @@ public start_demo(id)
 
   static mapname[32];
   get_mapname(mapname, charsmax(mapname));
-  utils_clean_string(mapname, sizeof(mapname));
 
   if (get_pcvar_num(cvars[MAPNAME]))
   {
@@ -98,7 +98,6 @@ public start_demo(id)
 
   static nickname[32];
   get_user_name(id, nickname, charsmax(nickname));
-  utils_clean_string(nickname, sizeof(nickname));
 
   if (get_pcvar_num(cvars[NICKNAME]))
   {
@@ -115,7 +114,6 @@ public start_demo(id)
   else
   {
     get_user_authid(id, steamid, charsmax(steamid));
-    utils_clean_string(steamid, sizeof(steamid));
 
     if (get_pcvar_num(cvars[STEAMID]))
     {
@@ -124,8 +122,8 @@ public start_demo(id)
     }
   }
 
+  utils_clean_string(filename, charsmax(filename))
   client_cmd(id, "stop; record ^"%s^"", filename);
-
 
   if (get_pcvar_num(cvars[NOTIFY]))
   {
@@ -146,39 +144,38 @@ public delayed_print(filename[], id)
   client_print(id, print_console, filename);
   client_print(id, print_console, "^n^n");
   
-  client_print_color(id, id, "%s filename: ^3%s.dem^1", prefix, filename);
+  client_print_color(id, id, "^4[%s]^1 filename: ^3%s.dem^1", prefix, filename);
 }
 
 public utils_clean_string(str[], len)
 {
-  enum Key {FIND[4], REPLACE[4]};
+  static pattern[32] = "[^^a-zA-Z0-9_-]";
+  static replace[32] = "_";
 
-  new const keys[][Key] = 
+  new err;
+  new Regex:regex = regex_compile(pattern, err);
+
+  if (err)
   {
-    {"/",   ""},
-    {"\",   ""},
-    {" ",   "_"},
-    {"<",   ""},
-    {">",   ""},
-    {":",   "-"},
-    {"^"",  ""},
-    {"|",   ""},
-    {"?",   ""},
-    {"*",   ""},
-    {"'",   ""},
-    {"^"",  ""},
-    {"__",  "_"},
-    {"___", "_"},
-    {"  ",  " "}
+    log_amx("(utils_clean_string) Error on regex. err: %d", err);
     
+    regex_free(regex);
+    return PLUGIN_CONTINUE;
   }
 
-  remove_quotes(str);
-  trim(str);
+  regex_replace(regex, str, len, replace);
 
-  new l = sizeof(keys);
-  for (new i = 0; i < l; ++i)
+  regex = regex_compile("_{2,}", err);
+
+  if (err)
   {
-    replace_string(str, len, keys[i][FIND], keys[i][REPLACE]);
+    log_amx("(utils_clean_string) Error on regex. err: %d", err);
+    
+    regex_free(regex);
+    return PLUGIN_CONTINUE;
   }
+
+  regex_replace(regex, str, len, "_");
+
+  return PLUGIN_HANDLED;
 }
