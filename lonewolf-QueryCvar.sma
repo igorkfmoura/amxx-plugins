@@ -12,14 +12,14 @@
 #define USAGE_EXAMPLE2  "Example 2: query ^"lonewolf^" ^"cl_updaterate^""
 #define USAGE_EXAMPLE3  "Example 3: query ^"STEAM_0:0:8354200^" ^"sensitivity^""
 
-#define ADMIN_PERMITION ADMIN_CVAR
+#define ADMIN_PERMISSION ADMIN_CVAR
 
 
 public plugin_init()
 {
   register_plugin(PLUGIN, VERSION, AUTHOR)
   
-  register_clcmd("query", "cmd_query", ADMIN_PERMITION, USAGE);
+  register_clcmd("query", "cmd_query", ADMIN_PERMISSION, USAGE);
 }
 
 
