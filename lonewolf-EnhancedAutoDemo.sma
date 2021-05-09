@@ -9,8 +9,12 @@
 #include <regex>
 
 #define PLUGIN  "lonewolf-EnhancedAutoDemo"
-#define VERSION "0.2"
+#define VERSION "0.3"
 #define AUTHOR  "lonewolf"
+
+#if !defined MAX_MAPNAME_LENGTH
+#define MAX_MAPNAME_LENGTH 64
+#endif
 
 enum Cvars 
 {
@@ -23,10 +27,14 @@ enum Cvars
   NICKNAME,
   NOTIFY
 };
-
 new cvars[Cvars];
 
-new authorized[MAX_PLAYERS+1];
+new steamids[MAX_PLAYERS+1][32];
+new nicknames[MAX_PLAYERS+1][32];
+
+new hostname[64];
+new mapname[MAX_MAPNAME_LENGTH];
+new ip[32];
 
 public plugin_init()
 {
@@ -42,6 +50,10 @@ public plugin_init()
   cvars[DEMO_PREFIX] = create_cvar("amx_demo_name",   "EnhancedAutoDemo", _, "Base prefix for demo filename");
   cvars[CHAT_PREFIX] = create_cvar("amx_demo_prefix", "^4[EnhancedAutoDemo]^1", _, "Chat prefix");
   
+  get_mapname(mapname, charsmax(mapname));
+  get_user_ip(0, ip, charsmax(ip));
+  get_cvar_string("hostname", hostname, charsmax(hostname))
+
   register_clcmd("amx_demo", "start_demo");
 }
 
@@ -57,13 +69,21 @@ public client_putinserver(id)
 
 public client_authorized(id)
 {
-  authorized[id] = true;
+  get_user_authid(id, steamids[id], 31);
+  get_user_name(id, nicknames[id], 31);
+}
+
+
+public client_infochanged(id) 
+{
+  get_user_name(id, nicknames[id], 31);
 }
 
 
 public client_disconnected(id)
 {
-  authorized[id] = false;
+  steamids[id][0] = '^0';
+  nicknames[id][0] = '^0';
 }
 
 
@@ -78,17 +98,14 @@ public start_demo(id)
   static filename[128];
   get_pcvar_string(cvars[DEMO_PREFIX], filename, 32);
 
-  static time[32];
-  get_time("%Y-%m-%d_%H-%M-%S", time, charsmax(time));
+  static timestamp[32];
+  get_time("%Y-%m-%d_%H-%M-%S", timestamp, charsmax(timestamp));
   
   if (get_pcvar_num(cvars[TIMESTAMP]))
   {
     strcat(filename, "_", charsmax(filename));
-    strcat(filename, time, charsmax(filename));
+    strcat(filename, timestamp, charsmax(filename));
   }
-
-  static mapname[32];
-  get_mapname(mapname, charsmax(mapname));
 
   if (get_pcvar_num(cvars[MAPNAME]))
   {
@@ -96,30 +113,16 @@ public start_demo(id)
     strcat(filename, mapname, charsmax(filename));
   }
 
-  static nickname[32];
-  get_user_name(id, nickname, charsmax(nickname));
-
   if (get_pcvar_num(cvars[NICKNAME]))
   {
     strcat(filename, "_", charsmax(filename));
-    strcat(filename, nickname, charsmax(filename));
+    strcat(filename, nicknames[id], charsmax(filename));
   }
 
-  new steamid[32] = "^0";
-
-  if (!authorized[id])
+  if (get_pcvar_num(cvars[STEAMID]))
   {
-    log_amx("(start_demo) client %d not authorized, skipping steamid")
-  }
-  else
-  {
-    get_user_authid(id, steamid, charsmax(steamid));
-
-    if (get_pcvar_num(cvars[STEAMID]))
-    {
-      strcat(filename, "_", charsmax(filename));
-      strcat(filename, steamid, charsmax(filename));
-    }
+    strcat(filename, "_", charsmax(filename));
+    strcat(filename, steamids[id], charsmax(filename));
   }
 
   utils_clean_string(filename, charsmax(filename))
@@ -127,25 +130,53 @@ public start_demo(id)
 
   if (get_pcvar_num(cvars[NOTIFY]))
   {
+   
     set_task(2.0, "delayed_print", 9785 + id, filename, charsmax(filename));
   }
 
   return PLUGIN_HANDLED;
 }
 
+
 public delayed_print(filename[], id)
 {
   id -= 9785;
 
+  static timestamp[32];
+  get_time("%Y-%m-%d_%H-%M-%S", timestamp, charsmax(timestamp));
+
   static prefix[32];
   get_pcvar_string(cvars[CHAT_PREFIX], prefix, charsmax(prefix));
 
-  client_print(id, print_console, "^n^n");
-  client_print(id, print_console, filename);
-  client_print(id, print_console, "^n^n");
+  client_print(id, print_console, "^n-------------------------");
+  client_print(id, print_console, "^"%s^" v%s by ^"%s^"", PLUGIN, VERSION, AUTHOR);
+  client_print(id, print_console, "Check it out and more: https://github.com/igorkelvin/amxx-plugins");
+  client_print(id, print_console, "-------------------------");
+  client_print(id, print_console, "Hostname: %s", hostname);
+  client_print(id, print_console, "IP: %s", ip);
+  client_print(id, print_console, "Map: %s", mapname);
+  client_print(id, print_console, "Demo: %s.dem", filename);
+  client_print(id, print_console, "Timestamp: %s", timestamp);
+  client_print(id, print_console, "-------------------------");
+  client_print(id, print_console, "Players in server:");
   
-  client_print_color(id, id, "^4[%s]^1 filename: ^3%s.dem^1", prefix, filename);
+  for (new i = 1; i < MaxClients; ++i)
+  {
+    if (is_user_connected(i))
+    {
+      client_print(id, print_console, "#%02d: %s, %s", i, nicknames[i], steamids[i]);
+    }
+  }
+  
+  client_print(id, print_console, "-------------------------^n");
+
+  client_print_color(id, id, "^4[%s]^1 Hostname: ^3%s", prefix, hostname);
+  client_print_color(id, id, "^4[%s]^1 IP: ^3%s", prefix, ip);
+  client_print_color(id, id, "^4[%s]^1 Map: ^3%s", prefix, mapname);
+  client_print_color(id, id, "^4[%s]^1 Demo: ^3%s.dem", prefix, filename);
+  client_print_color(id, id, "^4[%s]^1 Timestamp: ^3%s", prefix, timestamp);
 }
+
 
 public utils_clean_string(str[], len)
 {
