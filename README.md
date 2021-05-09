@@ -87,9 +87,9 @@ Enhancements:
 | amx_demo_map | "0" | Append mapname on demo filename |
 | amx_demo_steam | "0" | Append steamid on demo filename |
 | amx_demo_nick | "0" | Append nickname on demo filename |
-| amx_demo_notify | "1" | Notify user when recording |
+| amx_demo_notify | "1" | Print demo info on chat on record start |
 | amx_demo_name | "EnhancedAutoDemo" | Base prefix for demo filename |
-| amx_demo_prefix | "^4\[EnhancedAutoDemo\]^1" | Chat prefix |
+| amx_demo_prefix | "EnhancedAutoDemo" | Chat prefix |
 
 ### [EnhancedMultiJump](./lonewolf-EnhancedMultiJump.sma)
 

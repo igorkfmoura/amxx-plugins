@@ -9,7 +9,7 @@
 #include <regex>
 
 #define PLUGIN  "lonewolf-EnhancedAutoDemo"
-#define VERSION "0.3"
+#define VERSION "0.3.1"
 #define AUTHOR  "lonewolf"
 
 #if !defined MAX_MAPNAME_LENGTH
@@ -48,22 +48,13 @@ public plugin_init()
   cvars[NOTIFY]    = create_cvar("amx_demo_notify", "1", _, "Notify user when recording");
   
   cvars[DEMO_PREFIX] = create_cvar("amx_demo_name",   "EnhancedAutoDemo", _, "Base prefix for demo filename");
-  cvars[CHAT_PREFIX] = create_cvar("amx_demo_prefix", "^4[EnhancedAutoDemo]^1", _, "Chat prefix");
+  cvars[CHAT_PREFIX] = create_cvar("amx_demo_prefix", "EnhancedAutoDemo", _, "Chat prefix");
   
   get_mapname(mapname, charsmax(mapname));
   get_user_ip(0, ip, charsmax(ip));
   get_cvar_string("hostname", hostname, charsmax(hostname))
 
   register_clcmd("amx_demo", "start_demo");
-}
-
-
-public client_putinserver(id)
-{
-	if(is_user_connected(id) && get_pcvar_num(cvars[AUTO])) 
-	{
-		set_task(5.0, "task_start_demo", 1612 + id);
-	}
 }
 
 
@@ -82,8 +73,17 @@ public client_infochanged(id)
 
 public client_disconnected(id)
 {
-  steamids[id][0] = '^0';
+  steamids[id][0]  = '^0';
   nicknames[id][0] = '^0';
+}
+
+
+public client_putinserver(id)
+{
+	if(is_user_connected(id) && get_pcvar_num(cvars[AUTO])) 
+	{
+		set_task(5.0, "task_start_demo", 1612 + id);
+	}
 }
 
 
@@ -92,6 +92,7 @@ public task_start_demo(id)
   id -= 1612;
   start_demo(id);
 }
+
 
 public start_demo(id)
 {
@@ -113,13 +114,13 @@ public start_demo(id)
     strcat(filename, mapname, charsmax(filename));
   }
 
-  if (get_pcvar_num(cvars[NICKNAME]))
+  if (nicknames[id][0] && get_pcvar_num(cvars[NICKNAME]))
   {
     strcat(filename, "_", charsmax(filename));
     strcat(filename, nicknames[id], charsmax(filename));
   }
 
-  if (get_pcvar_num(cvars[STEAMID]))
+  if (steamids[id][0] && get_pcvar_num(cvars[STEAMID]))
   {
     strcat(filename, "_", charsmax(filename));
     strcat(filename, steamids[id], charsmax(filename));
@@ -128,11 +129,7 @@ public start_demo(id)
   utils_clean_string(filename, charsmax(filename))
   client_cmd(id, "stop; record ^"%s^"", filename);
 
-  if (get_pcvar_num(cvars[NOTIFY]))
-  {
-   
-    set_task(2.0, "delayed_print", 9785 + id, filename, charsmax(filename));
-  }
+  set_task(2.0, "delayed_print", 9785 + id, filename, charsmax(filename));
 
   return PLUGIN_HANDLED;
 }
@@ -152,10 +149,10 @@ public delayed_print(filename[], id)
   client_print(id, print_console, "^"%s^" v%s by ^"%s^"", PLUGIN, VERSION, AUTHOR);
   client_print(id, print_console, "Check it out and more: https://github.com/igorkelvin/amxx-plugins");
   client_print(id, print_console, "-------------------------");
+  client_print(id, print_console, "Recording demo: %s.dem", filename);
   client_print(id, print_console, "Hostname: %s", hostname);
-  client_print(id, print_console, "IP: %s", ip);
+  client_print(id, print_console, "Host IP: %s", ip);
   client_print(id, print_console, "Map: %s", mapname);
-  client_print(id, print_console, "Demo: %s.dem", filename);
   client_print(id, print_console, "Timestamp: %s", timestamp);
   client_print(id, print_console, "-------------------------");
   client_print(id, print_console, "Players in server:");
@@ -167,14 +164,17 @@ public delayed_print(filename[], id)
       client_print(id, print_console, "#%02d: %s, %s", i, nicknames[i], steamids[i]);
     }
   }
-  
+
   client_print(id, print_console, "-------------------------^n");
 
-  client_print_color(id, id, "^4[%s]^1 Hostname: ^3%s", prefix, hostname);
-  client_print_color(id, id, "^4[%s]^1 IP: ^3%s", prefix, ip);
-  client_print_color(id, id, "^4[%s]^1 Map: ^3%s", prefix, mapname);
-  client_print_color(id, id, "^4[%s]^1 Demo: ^3%s.dem", prefix, filename);
-  client_print_color(id, id, "^4[%s]^1 Timestamp: ^3%s", prefix, timestamp);
+  if (get_pcvar_num(cvars[NOTIFY]))
+  {
+    client_print_color(id, id, "^4[%s]^1 Recording demo: ^3%s.dem", prefix, filename);
+    client_print_color(id, id, "^4[%s]^1 Hostname: ^3%s", prefix, hostname);
+    client_print_color(id, id, "^4[%s]^1 Host IP: ^3%s", prefix, ip);
+    client_print_color(id, id, "^4[%s]^1 Map: ^3%s", prefix, mapname);
+    client_print_color(id, id, "^4[%s]^1 Timestamp: ^3%s", prefix, timestamp);
+  }
 }
 
 
