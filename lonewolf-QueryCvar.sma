@@ -46,7 +46,7 @@ public cmd_query(admin)
 
   if (argv[0] == '0')
   {
-    for (new id = 1; id < MaxClients; ++id)
+    for (new id = 1; id <= MaxClients; ++id)
     {
       if (!is_user_connected(id))
       {
