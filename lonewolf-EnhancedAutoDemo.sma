@@ -7,14 +7,27 @@
 #include <amxmodx>
 #include <engine>
 #include <regex>
+#include <cstrike>
 
-#define PLUGIN  "lonewolf-EnhancedAutoDemo"
-#define VERSION "0.3.1"
+#define PLUGIN  "EnhancedAutoDemo"
+#define VERSION "0.4"
 #define AUTHOR  "lonewolf"
 
 #if !defined MAX_MAPNAME_LENGTH
 #define MAX_MAPNAME_LENGTH 64
 #endif
+
+#define ADMIN_PERMISSION ADMIN_CVAR
+
+new usages[][96] =
+{
+  "amx_demo <0 or * or ID or NICK or AUTHID>",
+  "Example 1: amx_demo ^"1^" -> record demo of player #1 on ^"status^"",
+  "Example 2: amx_demo ^"lonewolf^" -> record demo player with ^"lonewolf^" on nick",
+  "Example 3: amx_demo ^"STEAM_0:0:8354200^"",
+  "Example 4: amx_demo ^"0^" -> Record demo of all players",
+  "Example 5: amx_demo ^"*^" -> Record demo of all players"
+};
 
 enum Cvars 
 {
@@ -31,10 +44,13 @@ new cvars[Cvars];
 
 new steamids[MAX_PLAYERS+1][32];
 new nicknames[MAX_PLAYERS+1][32];
+new Float:last_record_time[MAX_PLAYERS+1];
 
 new hostname[64];
 new mapname[MAX_MAPNAME_LENGTH];
 new ip[32];
+
+new menu_demomenu_callback_id;
 
 public plugin_init()
 {
@@ -54,7 +70,11 @@ public plugin_init()
   get_user_ip(0, ip, charsmax(ip));
   get_cvar_string("hostname", hostname, charsmax(hostname))
 
-  register_clcmd("amx_demo", "start_demo");
+  menu_demomenu_callback_id = menu_makecallback("menu_demomenu_callback");
+
+  register_clcmd("amx_demo",     "cmd_demo",     ADMIN_PERMISSION, usages[0]);
+  register_clcmd("amx_demoall",  "cmd_demoall",  ADMIN_PERMISSION, "Record demo of all players");
+  register_clcmd("amx_demomenu", "cmd_demomenu", ADMIN_PERMISSION, "Open demo record menu");
 }
 
 
@@ -62,6 +82,8 @@ public client_authorized(id)
 {
   get_user_authid(id, steamids[id], 31);
   get_user_name(id, nicknames[id], 31);
+
+  last_record_time[id] = 0.0;
 }
 
 
@@ -75,6 +97,8 @@ public client_disconnected(id)
 {
   steamids[id][0]  = '^0';
   nicknames[id][0] = '^0';
+
+  last_record_time[id] = 0.0;
 }
 
 
@@ -93,6 +117,190 @@ public task_start_demo(id)
   start_demo(id);
 }
 
+public print_usage(id)
+{
+  client_print(id, print_console, "^n");
+
+  new len = sizeof(usages);
+  for (new i = 0; i < len; ++i)
+  {
+    client_print(id, print_console, "[%s] %s", PLUGIN, usages[i]);
+  }
+  
+  client_print(id, print_console, "^n");
+}
+
+
+public cmd_demo(admin)
+{
+  if (!is_user_connected(admin))
+  {
+    return PLUGIN_HANDLED;
+  }
+
+  new argc = read_argc();
+  if (argc < 2)
+  {
+    print_usage(admin);
+    return PLUGIN_HANDLED;
+  }
+  
+  new argv[32];
+  read_argv(1, argv, charsmax(argv));
+
+  if (argv[0] == '0' || argv[0] == '*')
+  {
+    for (new id = 1; id <= MaxClients; ++id)
+    {
+      if (is_user_connected(id))
+      {
+        start_demo(id);
+      }
+    }
+
+    return PLUGIN_HANDLED;
+  }
+
+  new id = str_to_num(argv);
+  if (id && is_user_connected(id))
+  {
+    start_demo(id);
+    return PLUGIN_HANDLED;
+  }
+
+  id = find_player_ex(FindPlayer_MatchNameSubstring, argv);
+  if (!id)
+  {
+    id = find_player_ex(FindPlayer_MatchAuthId, argv);
+    if (!id)
+    {
+      id = str_to_num(argv);
+    }
+  }
+  
+  if (is_user_connected(id))
+  {
+    start_demo(id);
+  }
+  else
+  {
+    client_print(admin, print_console, "^n[%s] Player not found!", PLUGIN);
+    print_usage(admin);
+  }
+
+  return PLUGIN_HANDLED;
+}
+
+
+public cmd_demoall(admin)
+{
+  if (!is_user_connected(admin))
+  {
+    return PLUGIN_HANDLED;
+  }
+
+  for (new id = 1; id <= MaxClients; ++id)
+  {
+    if (is_user_connected(id))
+    {
+      start_demo(id);
+    }
+  }
+
+  return PLUGIN_HANDLED;
+}
+
+
+public cmd_demomenu(admin)
+{
+  if (is_user_connected(admin))
+  {
+    menu_demomenu(admin);
+  }
+
+  return PLUGIN_HANDLED;
+}
+
+public menu_demomenu(admin)
+{
+  new menu = menu_create("Admin EnhancedDemo Menu^n\d(amx_demomenu)\w", "menu_demomenu_handler");
+
+  static item[48];
+  for (new id = 1; id <= MaxClients; ++id)
+  {
+    if (!is_user_connected(id))
+    {
+      continue;
+    }
+
+    static name[32];
+    get_user_name(id, name, charsmax(name));
+
+    new const team_prefixes[CsTeams][] = { "", "\rTR", "\yCT", "\dSPEC" };
+    new CsTeams:team = cs_get_user_team(id);
+
+    new color[][] = {"\w", "\r"};
+
+    formatex(item, charsmax(item), "\d[%s\d] %s%s", team_prefixes[team], color[(last_record_time[id] > 0.0)], name);
+
+    new id_str[3];
+    num_to_str(id, id_str, charsmax(id_str));
+
+    menu_additem(menu, item, id_str, ADMIN_PERMISSION, menu_demomenu_callback_id);
+  }
+
+  menu_display(admin, menu);
+
+  return PLUGIN_HANDLED;
+}
+
+public menu_demomenu_callback(admin, menu, item)
+{
+  new info[4];
+  menu_item_getinfo(menu, item, _, info, charsmax(info));
+  new id = str_to_num(info);
+
+  if (is_user_connected(id))
+  {
+    if (last_record_time[id] == 0.0 || last_record_time[id] + 30.0 < get_gametime())
+    {
+      return ITEM_IGNORE;
+    }
+  }
+  
+  return ITEM_DISABLED;
+}
+
+
+public menu_demomenu_handler(admin, menu, item)
+{
+  if (item == MENU_EXIT || !is_user_connected(admin))
+  {
+    menu_destroy(menu);
+    return PLUGIN_HANDLED;
+  }
+
+  new info[4];
+  menu_item_getinfo(menu, item, _, info, charsmax(info));
+  new id = str_to_num(info);
+
+  if (is_user_connected(id))
+  {
+    static prefix[32];
+    get_pcvar_string(cvars[CHAT_PREFIX], prefix, charsmax(prefix));
+
+    static name[32];
+    get_user_name(id, name, charsmax(name));
+
+    client_print_color(admin, id, "^4[%s]^1 Started demo record for ^3%s^1.", prefix, name);
+    start_demo(id);
+  }
+
+  menu_destroy(menu);
+  menu_demomenu(admin);
+
+  return PLUGIN_HANDLED;
+}
 
 public start_demo(id)
 {
@@ -128,6 +336,7 @@ public start_demo(id)
 
   utils_clean_string(filename, charsmax(filename))
   client_cmd(id, "stop; record ^"%s^"", filename);
+  last_record_time[id] = get_gametime();
 
   set_task(2.0, "delayed_print", 9785 + id, filename, charsmax(filename));
 
