@@ -46,6 +46,13 @@ Normally isn't possible to hook "slot1-slot10" inputs, but this test uses an inv
 | --- | --- |
 |say /test | Enable/disable fakeinputs menu |
 
+### [test-fillammo](./test-fillammo.sma)
+
+Fill player primary and secundary weapons's clip and backpack ammo. This is a bit tricky because the default "cstrike" module can only get active weapon info.
+
+| Command | Description |
+| --- | --- |
+|say /test | Fill player ammo |
 
 ### [test-fov](./test-fov.sma)
 
