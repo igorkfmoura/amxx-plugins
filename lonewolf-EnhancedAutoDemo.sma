@@ -10,7 +10,7 @@
 #include <cstrike>
 
 #define PLUGIN  "EnhancedAutoDemo"
-#define VERSION "0.4"
+#define VERSION "0.4.1"
 #define AUTHOR  "lonewolf"
 
 #if !defined MAX_MAPNAME_LENGTH
@@ -366,11 +366,13 @@ public delayed_print(filename[], id)
   client_print(id, print_console, "-------------------------");
   client_print(id, print_console, "Players in server:");
   
+  new count = 0;
   for (new i = 1; i < MaxClients; ++i)
   {
     if (is_user_connected(i))
     {
-      client_print(id, print_console, "#%02d: %s, %s", i, nicknames[i], steamids[i]);
+      ++count;
+      client_print(id, print_console, "#%02d: %s, %s", count, nicknames[i], steamids[i]);
     }
   }
 
