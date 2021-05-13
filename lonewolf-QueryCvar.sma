@@ -1,7 +1,7 @@
 #include <amxmodx>
 
 #define PLUGIN  "QueryCvar"
-#define VERSION "0.1"
+#define VERSION "0.1.1"
 #define AUTHOR  "lonewolf"
 
 #define PREFIX_CHAT    "^4[QueryCvar]^1"
@@ -37,6 +37,9 @@ public cmd_query(admin)
   
   new cvar[32];
   read_argv(2, cvar, charsmax(cvar));
+
+  remove_quotes(cvar);
+  trim(cvar);
 
   new admin_str[3];
   num_to_str(admin, admin_str, charsmax(admin_str));
@@ -96,6 +99,7 @@ public query_client(id, const cvar[], const value[], const param[])
   if (equal(value, "Bad CVAR request"))
   {
     client_print(admin, print_console, "^n%s %s", PREFIX_CONSOLE, value);
+    client_print(admin, print_console, "%s you queried: %s", PREFIX_CONSOLE, cvar);
     client_print(admin, print_console, "%s %s", PREFIX_CONSOLE, USAGE);
     client_print(admin, print_console, "%s %s", PREFIX_CONSOLE, USAGE_EXAMPLE1);
     client_print(admin, print_console, "%s %s", PREFIX_CONSOLE, USAGE_EXAMPLE2);
