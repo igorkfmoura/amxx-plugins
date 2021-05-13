@@ -8,7 +8,7 @@
 #include <xs>
 
 #define PLUGIN  "MaxSpeed"
-#define VERSION "0.12"
+#define VERSION "0.13"
 #define AUTHOR  "lonewolf"
 
 #define PREFIX "^4[MaxSpeed]^1"
@@ -105,8 +105,10 @@ public handle_speed(id)
   if (get_pcvar_num(cvar_debug))
   {
     user_enabled_speed[id] = !user_enabled_speed[id];
-    client_print_color(id, print_team_default, "%s speed debug %s.", PREFIX, user_enabled_speed[id] ? "enabled" : "disabled");
+    client_print_color(id, print_team_default, "%s Speed debug %s.", PREFIX, user_enabled_speed[id] ? "enabled" : "disabled");
   }
+
+  return PLUGIN_HANDLED;
 }
 
 
@@ -245,7 +247,7 @@ public client_PostThink(id)
     player_maxspeed = user_oldspeed[id];
   }
   
-  if (!is_spectator && (speed >= player_maxspeed))
+  if (!is_spectator && (speed > player_maxspeed))
   {
     new Float:c;
   
