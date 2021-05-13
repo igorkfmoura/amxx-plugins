@@ -69,11 +69,11 @@ Easy to configure Fixed Cameras Teleports plugin for spectator usage with object
 ### [EnhancedAutoDemo](./lonewolf-EnhancedAutoDemo.sma)
 
 
-Made from scratch to be no-config-needed replacement for [Auto Demo Recorder](https://forums.alliedmods.net/showthread.php?p=770786) by IzI with the main objective of recording demos with unique filename for Clan Fights.
+Demo recorder plugin with timestamp, server name, ip, mapname that footprints all players nick and steamid on demo start. No-config-needed made from scratch replacement for [Auto Demo Recorder](https://forums.alliedmods.net/showthread.php?p=770786) by IzI with the main objective of recording demos with unique filename for Clan Fights.
 
 Enhancements:
 * Configurable parameters on filename: clan prefix, timestamp, steamid, nickname and mapname;
-
+* Records on demo all status from server: now demo
 
 | Command | Usage |
 | --- | --- |
