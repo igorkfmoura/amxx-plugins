@@ -10,7 +10,7 @@
 #include <xs>
 
 #define MOD_TITLE   "AdvancedObserver"
-#define MOD_VERSION "0.5.4"
+#define MOD_VERSION "0.5.5"
 #define MOD_AUTHOR  "lonewolf"
 
 #define PREFIX "^4[AdvancedObserver]^1"
@@ -280,7 +280,7 @@ public client_cmdStart(id)
     new obs_mode = entity_get_int(id, EV_INT_iuser1);
     if (obs_mode == OBS_ROAMING)
     {
-      new closest = observer_find_next_player_direction(id, FORWARD, 1000.0, _, .target=id);
+      new closest = observer_find_next_player_direction(id, FORWARD, 2000.0, _, .target=id);
       if (closest)
       {
         observer_set_mode(id, OBS_IN_EYE);
@@ -296,7 +296,7 @@ public client_cmdStart(id)
     new obs_mode = entity_get_int(id, EV_INT_iuser1);
     if (obs_mode == OBS_ROAMING)
     {
-      new closest = observer_find_next_player_direction(id, BACK, 1000.0, _, .target=id);
+      new closest = observer_find_next_player_direction(id, BACK, 2000.0, _, .target=id);
       if (closest)
       {
         observer_set_mode(id, OBS_IN_EYE);
@@ -318,19 +318,19 @@ public client_cmdStart(id)
     {
       if (pressed & IN_MOVERIGHT)
       {
-        observer_find_next_player_direction(id, RIGHT, .maxdistance=1000.0);
+        observer_find_next_player_direction(id, RIGHT, .maxdistance=2000.0);
       }
       else if (pressed & IN_MOVELEFT)
       {
-        observer_find_next_player_direction(id, LEFT, .maxdistance=1000.0);
+        observer_find_next_player_direction(id, LEFT, .maxdistance=2000.0);
       }
       else if (pressed & IN_FORWARD)
       {
-        observer_find_next_player_direction(id, FORWARD, .maxdistance=1000.0);
+        observer_find_next_player_direction(id, FORWARD, .maxdistance=2000.0);
       }
       else if (pressed & IN_BACK)
       {
-        observer_find_next_player_direction(id, BACK, .maxdistance=1000.0);
+        observer_find_next_player_direction(id, BACK, .maxdistance=2000.0);
       }
     }
   }
@@ -918,7 +918,7 @@ public task_find_flag_holders(task_id) // jctf_base.sma
   {
     set_task(2.0, "task_find_flag_holders", task_id);
   }
-  set_task(0.1, "task_check_spec_aiming", task_id+1, .flags = "b");
+  set_task(0.5, "task_check_spec_aiming", task_id+1, .flags = "b");
 }
 
 public task_check_spec_aiming(task_id)
@@ -963,7 +963,7 @@ public task_check_spec_aiming(task_id)
     
     new const team_names[CsTeams][] = {"", "TR", "CT", "SPECTATOR"};
 
-    set_hudmessage(colors[team][0], colors[team][1], colors[team][2], -1.0, 0.52, 0, 6.0, 0.15, 0.1, 0.1, -1);
+    set_hudmessage(colors[team][0], colors[team][1], colors[team][2], -1.0, 0.52, 0, 6.0, 0.5, 0.0, 0.0, -1);
     ShowSyncHudMsg(id, hudsync1, "%s: %s^nHealth: %d%%", team_names[team], player_name, health);
     
     if (camera_hooked[id])
@@ -1169,7 +1169,7 @@ public event_player_spawned(id)
   }
 
   cmd_obs(id);
-  client_print_color(id, print_team_grey, "%s Those features are only available to ^3Spectators^1.", PREFIX);
+  // client_print_color(id, print_team_grey, "%s Those features are only available to ^3Spectators^1.", PREFIX);
 }
 
 
@@ -1187,7 +1187,7 @@ public event_player_joined_team()
   if (team[0] != 'S' && cs_get_user_team(id) != CS_TEAM_SPECTATOR)
   {
     cmd_obs(id);
-    client_print_color(id, print_team_grey, "%s Observer features are only available to ^3Spectators^1.", PREFIX);
+    // client_print_color(id, print_team_grey, "%s Observer features are only available to ^3Spectators^1.", PREFIX);
   }
 }
 
@@ -1278,6 +1278,19 @@ public menu_fakeinput_handler(id, key)
 
 public cmd_obs(id)
 {
+  if (!is_user_connected(id))
+  {
+    return PLUGIN_HANDLED;
+  }
+
+  if (is_user_alive(id) || cs_get_user_team(id) != CS_TEAM_SPECTATOR)
+  {
+    camera_enabled_bits &= ~(1 << (id-1));
+    client_print_color(id, print_team_grey, "%s Observer features are only available to ^3Spectators^1.", PREFIX);
+
+    return PLUGIN_HANDLED;
+  }
+
   camera_enabled_bits ^= (1 << (id-1));
 
   if (USER_ENABLED(id))
