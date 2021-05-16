@@ -8,10 +8,9 @@
 #include <fakemeta>
 #include <fakemeta_stocks>
 #include <xs>
-#include <fun>
 
 #define MOD_TITLE   "AdvancedObserver"
-#define MOD_VERSION "0.5.2"
+#define MOD_VERSION "0.5.4"
 #define MOD_AUTHOR  "lonewolf"
 
 #define PREFIX "^4[AdvancedObserver]^1"
@@ -19,11 +18,8 @@
 #define DEBUG_ENABLED true
 
 #if DEBUG_ENABLED == true
-
 #define DEBUG(%1) client_print(%1)
-
 #else
-
 #endif /* DEBUG_ENABLED == true */
 
 #define USER_ENABLED(%1)           (camera_enabled_bits & (1 << (%1)-1))
@@ -35,8 +31,8 @@
 #define PM_VEC_DUCK_VIEW     12
 #define PM_VEC_VIEW          17
 
-#define TASK_ID_DEBUG 11515
-
+#define TASK_ID_DEBUG     11515
+#define TASK_ID_FAKEINPUT 47653
 enum
 {
   CAMERA_MODE_SPEC_ANYONE = 0,
@@ -66,7 +62,6 @@ new player_aimed[MAX_PLAYERS+1];
 
 new bool:player_fixangle[MAX_PLAYERS+1];
 
-
 enum Direction
 {
   NO_DIRECTION = 0,
@@ -85,17 +80,19 @@ enum Entities
 };
 
 new Entities:player_follow[MAX_PLAYERS+1];
+new bool:player_follow_once[MAX_PLAYERS+1];
 
 new camera_hooked[MAX_PLAYERS + 1];
 new camera_grenade_to_follow[MAX_PLAYERS+1];
 new camera_ent_to_follow[MAX_PLAYERS+1];
-
 
 new camera_grenade_bits = 0x00000000;
 new camera_enabled_bits = 0x00000000;
 new camera_debug_bits   = 0x00000000;
 
 new hudsync1;
+
+new menuid_fakeinput;
 
 public plugin_init()
 {
@@ -140,9 +137,13 @@ public plugin_init()
   register_logevent("event_plantedthebomb", 3, "2=Planted_The_Bomb");
 
   hudsync1 = CreateHudSyncObj();
+
+  menuid_fakeinput = register_menuid("fakeinput");
+  register_menucmd(menuid_fakeinput, 1023, "menu_fakeinput_handler");
   
   new task_id = 5032;
   set_task(5.0, "task_find_flag_holders", task_id);
+  
 }
 
 public event_pickedthebomb()
@@ -600,6 +601,11 @@ public client_PostThink(id)
       case FLAG_RED:  camera_follow_flag(id, follow);
       case FLAG_BLUE: camera_follow_flag(id, follow);
     }
+
+    if (follow && player_follow_once[id])
+    {
+      player_follow[id] = NO_ENTITY;
+    }
   }
 
   return PLUGIN_CONTINUE;
@@ -860,12 +866,15 @@ public client_connect(id)
   camera_enabled_bits &= ~(1 << id-1);
   camera_grenade_bits &= ~(1 << id-1);
   camera_debug_bits   &= ~(1 << id-1);
-  camera_hooked[id]             = false;
-  camera_grenade_to_follow[id]  = 0;
-  camera_ent_to_follow[id]      = 0;
   
-  player_aimed[id]        = 0;
-  next_action[id]         = 0.0;
+  camera_hooked[id]            = false;
+  camera_grenade_to_follow[id] = 0;
+  camera_ent_to_follow[id]     = 0;
+  
+  player_follow_once[id] = false;
+  player_aimed[id]  = 0;
+  next_action[id]   = 0.0;
+  player_follow[id] = NO_ENTITY;
 }
 
 
@@ -874,12 +883,15 @@ public client_disconnected(id)
   camera_enabled_bits &= ~(1 << id-1);
   camera_grenade_bits &= ~(1 << id-1);
   camera_debug_bits   &= ~(1 << id-1);
-  camera_hooked[id]             = false;
-  camera_grenade_to_follow[id]  = 0;
-  camera_ent_to_follow[id]      = 0;
   
-  player_aimed[id]        = 0;
-  next_action[id]         = 0.0;
+  camera_hooked[id]            = false;
+  camera_grenade_to_follow[id] = 0;
+  camera_ent_to_follow[id]     = 0;
+  
+  player_follow_once[id] = false;
+  player_aimed[id]  = 0;
+  next_action[id]   = 0.0;
+  player_follow[id] = NO_ENTITY;
 }
 
 
@@ -1066,13 +1078,13 @@ public camera_follow_flag(id, Entities:type)
     return PLUGIN_HANDLED;
   }
   
-  camera_follow_ent(id, flag, player_fixangle[id]);
+  camera_follow_ent(id, flag, player_fixangle[id], 200.0, 60.0, Float:{0.0, 0.0, 45.0});
   player_fixangle[id] = false;
 
   return PLUGIN_HANDLED;
 }
 
-camera_follow_ent(id, ent, fixangle=0, Float:distance=200.0, Float:height=60.0)
+camera_follow_ent(id, ent, fixangle=0, Float:distance=200.0, Float:height=60.0, Float:offset[3]={0.0, 0.0, 0.0})
 {
   observer_set_mode(id, OBS_ROAMING);
   
@@ -1081,7 +1093,8 @@ camera_follow_ent(id, ent, fixangle=0, Float:distance=200.0, Float:height=60.0)
   new Float:player_angles[3];
   new Float:v_forward[3];
   entity_get_vector(ent, EV_VEC_origin, ent_origin);
-  
+  xs_vec_add(ent_origin, offset, ent_origin);
+
   xs_vec_copy(ent_origin, player_origin);
   entity_get_vector(id, EV_VEC_v_angle, player_angles);
 
@@ -1178,6 +1191,91 @@ public event_player_joined_team()
   }
 }
 
+
+public task_fakeinput()
+{
+  static menu;
+  static newmenu;
+  static page;
+  
+  for (new id = 1; id <= MaxClients; id++)
+  {
+    if (!is_user_connected(id) || !USER_ENABLED(id))
+    {
+      continue;
+    }
+
+    player_menu_info(id, menu, newmenu, page);
+    // DEBUG(id, print_chat, "(print_menu) (%02d) ret: %d, newmenu: %d, menu: %d", 1, ret, newmenu, menu);
+
+    if (newmenu == -1 && menu <= 0)
+    {
+      menu_fakeinput(5234 + id);
+    }
+  }
+}
+
+
+public menu_fakeinput(id)
+{
+  id -= 5234;
+
+  if (is_user_connected(id) && !is_user_alive(id) && USER_ENABLED(id))
+  {
+    show_menu(id, 1023, " ", _, "fakeinput");
+  }
+
+  return PLUGIN_HANDLED;
+}
+
+public menu_fakeinput_handler(id, key)
+{
+  if (!is_user_connected(id) || is_user_alive(id) || !USER_ENABLED(id))
+  {
+    return PLUGIN_HANDLED;
+  }
+
+  key = (key + 1);
+  new slotcmd[7];
+  formatex(slotcmd, charsmax(slotcmd), "slot%d", key);
+
+  //client_print(id, print_chat, "(menu_fakeinput_handler) (%02d) selected '%s'", id, slotcmd);
+
+  switch (key)
+  {
+    case 1: 
+    {
+      observer_set_mode(id, OBS_IN_EYE);
+      observer_find_next_player(id, _, _, CS_TEAM_T);
+    }
+    case 2: 
+    {
+      observer_set_mode(id, OBS_IN_EYE);
+      observer_find_next_player(id, _, _, CS_TEAM_CT);
+    }
+    case 5:
+    {
+      camera_ent_c4(id);
+      player_follow_once[id] = true;
+    }
+    case 6:
+    {
+      camera_ent_flag_red(id);
+      player_follow_once[id] = true;
+    }
+    case 7:
+    {
+      camera_ent_flag_blue(id);
+      player_follow_once[id] = true;
+    }
+  }
+
+  // client_cmd(id, slotcmd);
+  set_task(0.1, "menu_fakeinput", 5234 + id);
+
+  return PLUGIN_HANDLED;
+}
+
 public cmd_obs(id)
 {
   camera_enabled_bits ^= (1 << (id-1));
@@ -1188,12 +1286,22 @@ public cmd_obs(id)
     
     new Float:now = get_gametime();
     next_action[id] = now + 3.0;
+
+    if (!task_exists(TASK_ID_FAKEINPUT))
+    {
+      set_task(1.0, "task_fakeinput", TASK_ID_FAKEINPUT, _, _, "b");
+    }
   }
   else
   {
     client_print_color(id, print_team_red, "%s Advanced Observer is now ^3disabled^1.", PREFIX);
 
     set_ent_data_float(id, "CBasePlayer", "m_flNextObserverInput", 0.0);
+
+    if (task_exists(TASK_ID_FAKEINPUT) && !camera_enabled_bits)
+    {
+      remove_task(TASK_ID_FAKEINPUT);
+    }
   }
 
   return PLUGIN_HANDLED;
