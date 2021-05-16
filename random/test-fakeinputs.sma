@@ -27,20 +27,26 @@ public plugin_init()
   set_task(1.0, "print_menu", 531, _, _, "b");
 }
 
-public print_menu(id)
+public print_menu()
 {
-  new menu;
-  new keys;
-//   new newmenu;
-//   new page;
+  static menu;
+  static newmenu;
+  static page;
   
-//   new ret = player_menu_info(1, menu, newmenu, page);
-//   client_print(1, print_chat, "(print_menu) (%02d) ret: %d, newmenu: %d, menu: %d", 1, ret, newmenu, menu);
-  
-  get_user_menu(id, menu, keys);
-  if (menu == menuid_fakeinput)
+  for (new id = 1; id <= MaxClients; id++)
   {
-    client_print(id, print_chat, "(print_menu) (%02d) viewing menuid_fakeinput: %d", id, menu);
+    if (!is_user_connected(id) || !enabled[id])
+    {
+      continue;
+    }
+
+    new ret = player_menu_info(id, menu, newmenu, page);
+    client_print(id, print_chat, "(print_menu) (%02d) ret: %d, newmenu: %d, menu: %d", 1, ret, newmenu, menu);
+
+    if (newmenu == -1 && menu <= 0)
+    {
+      menu_fakeinput(5234 + id);
+    }
   }
 }
 
