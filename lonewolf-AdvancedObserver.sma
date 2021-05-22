@@ -105,7 +105,7 @@ new menuid_fakeinput;
 
 public plugin_init()
 {
-  register_plugin(MOD_TITLE, MOD_VERSION, MOD_AUTHOR)
+  register_plugin(MOD_TITLE, MOD_VERSION, MOD_AUTHOR);
   
   register_clcmd("say /obs",      "cmd_obs");
   register_clcmd("say /obsdebug", "cmd_obsdebug", ADMIN_CVAR);
@@ -325,15 +325,11 @@ public client_cmdStart(id)
     new obs_mode = entity_get_int(id, EV_INT_iuser1);
     if (obs_mode == OBS_ROAMING)
     {
-      new closest = observer_find_next_player_direction(id, BACK, 2000.0, _, .target=id);
-      if (closest)
-      {
-        observer_set_mode(id, OBS_IN_EYE);
-      }
+      observer_set_mode(id, OBS_IN_EYE);
     }
     else
     {
-      observer_find_next_player(id, .reverse=true);
+      observer_find_next_player(id, .reverse=true, .target=last_target[id]);
     }
   }
   else if (pressed & IN_RELOAD)
@@ -373,8 +369,8 @@ stock observer_update_client_effects(id, old_mode)
   new bool:clear_progresss = false;
   new bool:clear_blindness = false;
   new bool:clear_nightvision = false;
-  // new bool:blindness_ok =  get_pcvar_num(cvar_fadetoblack) == 0;
-  new bool:blindness_ok =  get_cvar_num("mp_fadetoblack") == 0;
+  new bool:blindness_ok =  get_pcvar_num(cvar_fadetoblack) == 0;
+  // new bool:blindness_ok =  get_cvar_num("mp_fadetoblack") == 0;
 
   if (entity_get_int(id, EV_INT_iuser1) == OBS_IN_EYE)
   {
@@ -467,7 +463,7 @@ stock observer_find_next_player(id, reverse=false, target=0, CsTeams:force_team=
 {
   new CsTeams:team = cs_get_user_team(id);
   new bool:same_team = get_force_camera() != CAMERA_MODE_SPEC_ANYONE && team != CS_TEAM_SPECTATOR;
-  
+  new start = get_ent_data_entity(id, "CBasePlayer", "m_hObserverTarget");
   new newtarget = 0;
 
   if (target)
@@ -477,7 +473,7 @@ stock observer_find_next_player(id, reverse=false, target=0, CsTeams:force_team=
   else
   {
     new dir = reverse ? -1 : 1;
-    new start = get_ent_data_entity(id, "CBasePlayer", "m_hObserverTarget");
+    
     if (!is_user_connected(start))
     {
       start = id;
@@ -511,6 +507,11 @@ stock observer_find_next_player(id, reverse=false, target=0, CsTeams:force_team=
 
   if (newtarget)
   {
+    if (start && start != newtarget)
+    {
+      last_target[id] = start;
+    }
+
     camera_move_to_eyes(id);
     set_ent_data_entity(id, "CBasePlayer", "m_hObserverTarget", newtarget);
     
@@ -634,6 +635,11 @@ stock observer_find_next_player_direction(id, Direction:dir, Float:maxdistance =
 
   if (closest)
   {
+    if (current && current != closest)
+    {
+      last_target[id] = current;
+    }
+
     camera_move_to_eyes(id);
     set_ent_data_entity(id, "CBasePlayer", "m_hObserverTarget", closest);
     
@@ -1542,9 +1548,16 @@ public event_player_killed(victim, killer)
     
     new spectated = entity_get_int(id, EV_INT_iuser2);
     
-    if (id != victim && id != killer && spectated == victim)
+    if (id != victim && id != killer)
     {
-      observer_find_next_player(id, _, killer);
+      if (spectated == victim)
+      {
+        observer_find_next_player(id, _, killer);
+      }
+      if (victim == last_target[id])
+      {
+        last_target[id] = killer;
+      }
     }
   }
   
