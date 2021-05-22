@@ -10,7 +10,7 @@
 #include <xs>
 
 #define MOD_TITLE   "AdvancedObserver"
-#define MOD_VERSION "0.5.5"
+#define MOD_VERSION "0.6"
 #define MOD_AUTHOR  "lonewolf"
 
 #define PREFIX "^4[AdvancedObserver]^1"
@@ -18,8 +18,10 @@
 #define DEBUG_ENABLED true
 
 #if DEBUG_ENABLED == true
-#define DEBUG(%1) client_print(%1)
+  #define DEBUG(%1) client_print(%1)
 #else
+  public do_nothing(...) {}
+  #define DEBUG(%1) do_nothing(%1)
 #endif /* DEBUG_ENABLED == true */
 
 #define USER_ENABLED(%1)           (camera_enabled_bits & (1 << (%1)-1))
@@ -33,6 +35,7 @@
 
 #define TASK_ID_DEBUG     11515
 #define TASK_ID_FAKEINPUT 47653
+
 enum
 {
   CAMERA_MODE_SPEC_ANYONE = 0,
@@ -53,12 +56,14 @@ static const colors[CsTeams][3] =
 
 new MSG_ID_SCREENFADE;
 new MSG_ID_CROSSHAIR;
+new MSG_ID_SPECHEALTH;
 
 new entities_flag[CsTeams];
 new entity_c4 = 0;
 
 new Float:next_action[MAX_PLAYERS+1];
 new player_aimed[MAX_PLAYERS+1];
+new last_target[MAX_PLAYERS+1];
 
 new bool:player_fixangle[MAX_PLAYERS+1];
 
@@ -78,8 +83,8 @@ enum Entities
   FLAG_RED,
   FLAG_BLUE
 };
-
 new Entities:player_follow[MAX_PLAYERS+1];
+
 new bool:player_follow_once[MAX_PLAYERS+1];
 
 new camera_hooked[MAX_PLAYERS + 1];
@@ -89,6 +94,10 @@ new camera_ent_to_follow[MAX_PLAYERS+1];
 new camera_grenade_bits = 0x00000000;
 new camera_enabled_bits = 0x00000000;
 new camera_debug_bits   = 0x00000000;
+
+new cvar_fadetoblack;
+new cvar_forcechasecam;
+new cvar_forcecamera;
 
 new hudsync1;
 
@@ -123,8 +132,10 @@ public plugin_init()
   
   MSG_ID_SCREENFADE = get_user_msgid("ScreenFade");
   MSG_ID_CROSSHAIR  = get_user_msgid("Crosshair");
+  MSG_ID_SPECHEALTH = get_user_msgid("SpecHealth");
   
-  register_event("ScreenFade", "event_flashed", "b", "7=255");
+  // register_event("ScreenFade", "event_flashed", "b", "7=255");
+  register_message(MSG_ID_SCREENFADE, "msg_ScreenFade");
   
   RegisterHam(Ham_Spawn,  "player",  "event_player_spawned", .Post = true);
   RegisterHam(Ham_Killed, "player",  "event_player_killed",  .Post = true);
@@ -135,6 +146,10 @@ public plugin_init()
   register_event("ScoreAttrib", "event_pickedthebomb", "bc", "2=2");
   register_logevent("event_droppedthebomb", 3, "2=Dropped_The_Bomb");
   register_logevent("event_plantedthebomb", 3, "2=Planted_The_Bomb");
+
+  cvar_fadetoblack   = get_cvar_pointer("mp_fadetoblack");
+  cvar_forcechasecam = get_cvar_pointer("mp_forcechasecam");
+  cvar_forcecamera   = get_cvar_pointer("mp_forcecamera");
 
   hudsync1 = CreateHudSyncObj();
 
@@ -158,7 +173,7 @@ public event_pickedthebomb()
 
 public event_droppedthebomb()
 {
-  set_task(0.1, "event_droppedthebomb_delayed", 252);
+  set_task(0.1, "event_droppedthebomb_delayed", 25263);
 }
 
 
@@ -174,10 +189,10 @@ public event_droppedthebomb_delayed()
   
 
   new weaponbox = entity_get_edict(c4_ent, EV_ENT_owner);
-  if (is_user_connected(weaponbox))
+  if (is_user_connected(weaponbox)) // owner is still a player, not the weaponbox
   {
     entity_c4 = 0;
-    set_task(0.1, "event_droppedthebomb_delayed", 252);
+    set_task(0.1, "event_droppedthebomb_delayed", 25263);
     return;
   }
   
@@ -210,7 +225,7 @@ public debug_print(id)
 {
   if (!camera_debug_bits)
   {
-    return;
+    return PLUGIN_HANDLED;
   }
   
   for (new id = 1; id < MAX_PLAYERS; ++id)
@@ -225,20 +240,26 @@ public debug_print(id)
     new observer_wasfollowing = get_ent_data(id, "CBasePlayer", "m_bWasFollowing");
     new observer_canswitch    = get_ent_data(id, "CBasePlayer", "m_canSwitchObserverModes");
     
-    DEBUG(id, print_chat, "[DEBUG 1/2] target: %d, lastmode: %d, wasfollowing: %s, canswitch: %s", observer_target, observer_lastmode, observer_wasfollowing ? "true" : "false", observer_canswitch ? "true" : "false");
+    DEBUG(id, print_chat, "[DEBUG 1/3] target: %d, lastmode: %d, wasfollowing: %s, canswitch: %s", observer_target, observer_lastmode, observer_wasfollowing ? "true" : "false", observer_canswitch ? "true" : "false");
     
     new iuser1 = entity_get_int(id, EV_INT_iuser1);
     new iuser2 = entity_get_int(id, EV_INT_iuser2);
     new iuser3 = entity_get_int(id, EV_INT_iuser3);
     
-    DEBUG(id, print_chat, "[DEBUG 2/2] iuser{1,2,3}: {%d, %d, %d}", iuser1, iuser2, iuser3);
+    DEBUG(id, print_chat, "[DEBUG 2/3] iuser{1,2,3}: {%d, %d, %d}", iuser1, iuser2, iuser3);
+
+    new Float:next_observer_input = get_ent_data_float(id, "CBasePlayer", "m_flNextObserverInput");
+
+    DEBUG(id, print_chat, "[DEBUG 3/3] m_flNextObserverInput: %.1f", next_observer_input);
   }
+
+  return PLUGIN_HANDLED;
 }
 
 
 public client_cmdStart(id)
 {
-  if (is_user_alive(id) || !USER_ENABLED(id))
+  if (!is_user_connected(id) || is_user_alive(id) || !USER_ENABLED(id))
   {
     return PLUGIN_CONTINUE;
   }
@@ -265,15 +286,23 @@ public client_cmdStart(id)
     return PLUGIN_CONTINUE;
   }
   
-  next_action[id] = now + 0.1;
+  next_action[id] = now + 0.2;
   
-  // Disable default observer inputs
-  // TODO: find a good forward to set this just one time
-  set_ent_data_float(id, "CBasePlayer", "m_flNextObserverInput", get_gametime() + 1337.0);
-
   if (pressed & IN_JUMP)
   {
-    next_spec_mode(id);
+    new mode = entity_get_int(id, EV_INT_iuser1);
+    new nextmode;
+    switch (mode)
+    {
+      case OBS_CHASE_LOCKED: nextmode = OBS_IN_EYE;
+      case OBS_CHASE_FREE:   nextmode = OBS_IN_EYE;
+      case OBS_IN_EYE:       nextmode = OBS_ROAMING;
+      case OBS_ROAMING:      nextmode = OBS_IN_EYE;
+      case OBS_MAP_FREE:     nextmode = OBS_IN_EYE;
+      default:               nextmode = OBS_IN_EYE;
+    }
+
+    observer_set_mode(id, nextmode);
   }
   else if (pressed & IN_ATTACK)
   {
@@ -338,22 +367,101 @@ public client_cmdStart(id)
   return PLUGIN_CONTINUE;
 }
 
-public next_spec_mode(id)
+
+stock observer_update_client_effects(id, old_mode)
 {
-  new mode = entity_get_int(id, EV_INT_iuser1);
-  new nextmode;
-  switch (mode)
+  new bool:clear_progresss = false;
+  new bool:clear_blindness = false;
+  new bool:clear_nightvision = false;
+  // new bool:blindness_ok =  get_pcvar_num(cvar_fadetoblack) == 0;
+  new bool:blindness_ok =  get_cvar_num("mp_fadetoblack") == 0;
+
+  if (entity_get_int(id, EV_INT_iuser1) == OBS_IN_EYE)
   {
-    case OBS_CHASE_LOCKED: nextmode = OBS_IN_EYE;
-    case OBS_CHASE_FREE:   nextmode = OBS_IN_EYE;
-    case OBS_IN_EYE:       nextmode = OBS_ROAMING;
-    case OBS_ROAMING:      nextmode = OBS_IN_EYE;
-    case OBS_MAP_FREE:     nextmode = OBS_IN_EYE;
-    default:               nextmode = OBS_IN_EYE;
+    clear_progresss = true;
+    clear_blindness = true;
+    clear_nightvision = true;
+
+    new player = get_ent_data_entity(id, "CBasePlayer", "m_hObserverTarget");
+    if (is_user_connected(player))
+    {
+      // new progress = get_ent_data_float(id, "CBasePlayer", "m_progressStart");
+      // TODO: implement CBasePlayer:SetProgressBarTime2
+      // https://github.com/s1lentq/ReGameDLL_CS/blob/9736437cb8e6bff3e0044d91422ef38edce269f2/regamedll/dlls/player.cpp#L1778
+
+      if (blindness_ok)
+      {
+        new Float:start_time = get_ent_data_float(player, "CBasePlayer", "m_blindStartTime");
+        new Float:fade_time  = get_ent_data_float(player, "CBasePlayer", "m_blindFadeTime");
+        
+        if (start_time != 0.0 && fade_time != 0.0)
+        {
+          new Float:hold_time = get_ent_data_float(player, "CBasePlayer", "m_blindHoldTime");
+          new Float:end_time = fade_time + hold_time + start_time;
+
+          new Float:now = get_gametime();
+
+          if (end_time > now)
+          {
+            clear_blindness = false;
+
+            new alpha = get_ent_data(player, "CBasePlayer", "m_blindAlpha");
+            hold_time = hold_time + start_time - now;
+
+            if (hold_time <= 0.0)
+            {
+              hold_time = 0.0;
+              new Float:ratio = (end_time - now) / fade_time;
+              alpha = floatround(float(alpha) * ratio);
+              fade_time *= ratio;
+            }
+
+            if (alpha == 255)
+            {
+              fade_screen(id, hold_time, fade_time, 0, 255, 255, 255, 180);
+
+              set_hudmessage(200, 50, 0, -1.0, -1.0, 1, hold_time, hold_time, 0.1, 0.1, -1);
+              ShowSyncHudMsg(id, hudsync1, "[FLASHED]");
+            }
+            else
+            {
+              fade_screen(id, hold_time, fade_time, 0, 255, 255, 255, alpha);
+              ClearSyncHud(id, hudsync1);
+            }
+          }
+        }
+      }
+
+      // TODO
+      // clear nightvision
+    }
   }
-  
-  observer_set_mode(id, nextmode);
+  else if (old_mode == OBS_IN_EYE)
+  {
+    clear_progresss = true;
+    clear_blindness = true;
+    clear_nightvision = true;
+  }
+
+  // TODO
+  // if (clear_progress)
+  // {
+
+  // }
+  if (blindness_ok && clear_blindness)
+  {
+    fade_screen(id, 0.001, 0.0, 0, 0, 0, 0, 0);
+    ClearSyncHud(id, hudsync1);
+  }
+
+  // TODO
+  // if (clear_nightvision)
+  // {
+
+  // }
+
 }
+
 
 stock observer_find_next_player(id, reverse=false, target=0, CsTeams:force_team=CS_TEAM_UNASSIGNED)
 {
@@ -369,8 +477,14 @@ stock observer_find_next_player(id, reverse=false, target=0, CsTeams:force_team=
   else
   {
     new dir = reverse ? -1 : 1;
-    new current = get_ent_data_entity(id, "CBasePlayer", "m_hObserverTarget");
-    new start = current;
+    new start = get_ent_data_entity(id, "CBasePlayer", "m_hObserverTarget");
+    if (!is_user_connected(start))
+    {
+      start = id;
+    }
+    
+    new current = start;
+    new count = 0;
 
     do
     {  
@@ -384,12 +498,15 @@ stock observer_find_next_player(id, reverse=false, target=0, CsTeams:force_team=
         current = MaxClients;
       }
       newtarget = observer_is_valid_target(id, current, same_team, force_team);
+      
       if (newtarget)
       {
         break;
       }
+      
+      count++;
     } 
-    while (current != start)
+    while (current != start || count > 32)
   }
 
   if (newtarget)
@@ -397,14 +514,25 @@ stock observer_find_next_player(id, reverse=false, target=0, CsTeams:force_team=
     camera_move_to_eyes(id);
     set_ent_data_entity(id, "CBasePlayer", "m_hObserverTarget", newtarget);
     
+    new Float:health = entity_get_float(newtarget, EV_FL_health);
+    if (health < 0.0)
+    {
+      entity_set_float(newtarget, EV_FL_health, 0.0);
+    }
+
+    message_begin(MSG_ONE_UNRELIABLE, MSG_ID_SPECHEALTH, _, id);
+    write_byte(floatround(health));
+    message_end();
+
     new mode = entity_get_int(id, EV_INT_iuser1);
     if (mode != OBS_ROAMING)
     {
       entity_set_int(id, EV_INT_iuser2, newtarget);
     }
-  }
 
-  ClearSyncHud(id, hudsync1);
+    observer_update_client_effects(id, mode);
+  }
+  
   return newtarget;
 }
 
@@ -509,28 +637,42 @@ stock observer_find_next_player_direction(id, Direction:dir, Float:maxdistance =
     camera_move_to_eyes(id);
     set_ent_data_entity(id, "CBasePlayer", "m_hObserverTarget", closest);
     
+    new Float:health = entity_get_float(closest, EV_FL_health);
+    if (health < 0.0)
+    {
+      entity_set_float(closest, EV_FL_health, 0.0);
+    }
+
+    message_begin(MSG_ONE_UNRELIABLE, MSG_ID_SPECHEALTH, _, id);
+    write_byte(floatround(health));
+    message_end();
+
     new mode = entity_get_int(id, EV_INT_iuser1);
     if (mode != OBS_ROAMING)
     {
       entity_set_int(id, EV_INT_iuser2, closest);
     }
+
+    observer_update_client_effects(id, mode);
   }
 
-  ClearSyncHud(id, hudsync1);
   return closest;
 }
 
 public get_force_camera()
 {
   new ret;
-  new fadetoblack = get_cvar_num("mp_fadetoblack");
+  new fadetoblack = get_pcvar_num(cvar_fadetoblack);
+  // new fadetoblack = get_cvar_num("mp_fadetoblack");
 
   if (!fadetoblack)
   {
-    ret = get_cvar_num("mp_forcechasecam");
+    ret = get_pcvar_num(cvar_forcechasecam);
+    // ret = get_cvar_num("mp_forcechasecam");
     if (ret == CAMERA_MODE_SPEC_ANYONE)
     {
-      ret = get_cvar_num("mp_forcecamera");
+      ret = get_pcvar_num(cvar_forcecamera);
+      // ret = get_cvar_num("mp_forcecamera");
     }
   }
   else 
@@ -571,7 +713,7 @@ stock observer_is_valid_target(id, target, bool:same_team=false, CsTeams:team=CS
 
 public client_PostThink(id)
 {
-  if (is_user_alive(id) || !USER_ENABLED(id))
+  if (!is_user_connected(id) || is_user_alive(id) || !USER_ENABLED(id))
   {
     return PLUGIN_CONTINUE;
   }
@@ -588,24 +730,20 @@ public client_PostThink(id)
 
     return PLUGIN_CONTINUE;
   }
-  else 
+  camera_grenade_to_follow[id] = 0;
+  
+  new Entities:follow = player_follow[id];
+  switch (follow)
   {
-    camera_grenade_to_follow[id] = 0;
-    
-    new Entities:follow = player_follow[id];
-
-    switch (follow)
-    {
-      case NO_ENTITY: {}
-      case C4:        camera_follow_c4(id);
-      case FLAG_RED:  camera_follow_flag(id, follow);
-      case FLAG_BLUE: camera_follow_flag(id, follow);
-    }
-
-    if (follow && player_follow_once[id])
-    {
-      player_follow[id] = NO_ENTITY;
-    }
+    case NO_ENTITY: {}
+    case C4:        camera_follow_c4(id);
+    case FLAG_RED:  camera_follow_flag(id, follow);
+    case FLAG_BLUE: camera_follow_flag(id, follow);
+  }
+  
+  if (follow && player_follow_once[id])
+  {
+    player_follow[id] = NO_ENTITY;
   }
 
   return PLUGIN_CONTINUE;
@@ -676,13 +814,13 @@ public observer_set_mode(id, mode)
   {
     return;
   }
-
+  
   new old_mode = entity_get_int(id, EV_INT_iuser1);
   if (old_mode == mode)
   {
     return;
   }
-
+  
   new forcecamera = get_force_camera();
   new CsTeams:team = cs_get_user_team(id);
 
@@ -700,7 +838,7 @@ public observer_set_mode(id, mode)
       mode = OBS_IN_EYE;
     }
   }
-
+  
   new target = get_ent_data_entity(id, "CBasePlayer", "m_hObserverTarget");
 
   if (target)
@@ -709,7 +847,6 @@ public observer_set_mode(id, mode)
   }
 
   entity_set_int(id, EV_INT_iuser1, mode);
-
   if (mode == OBS_ROAMING)
   {
     target = 0;
@@ -719,7 +856,6 @@ public observer_set_mode(id, mode)
     if (!target)
     {
       target = observer_find_next_player(id);
-
       if (!target)
       {
         mode = OBS_ROAMING;
@@ -727,17 +863,17 @@ public observer_set_mode(id, mode)
       }
     }
   }
-
+  
   entity_set_int(id, EV_INT_iuser2, target);
   entity_set_int(id, EV_INT_iuser3, 0);
-
+  
   camera_move_to_eyes(id);
   set_observer_crosshair(id, mode);
-
+  
   set_ent_data(id, "CBasePlayer", "m_iObserverLastMode", mode);
   set_ent_data(id, "CBasePlayer", "m_bWasFollowing", 0);
-
-  ClearSyncHud(id, hudsync1);
+  
+  observer_update_client_effects(id, old_mode);
 }
 
 public camera_move_to_eyes(id)
@@ -819,23 +955,26 @@ public think_grenade(grenade)
 
 public camera_grenade_set(id)
 {
-  if (is_user_alive(id))
+  if (is_user_connected(id) && !is_user_alive(id) && USER_ENABLED(id))
   {
-    return PLUGIN_HANDLED;
+    camera_grenade_bits |= (1 << id-1);
   }
   
-  camera_grenade_bits |= (1 << id-1);
-
   return PLUGIN_HANDLED;
 }
 
 
 public camera_grenade_unset(id)
 {
-  camera_grenade_bits &= ~(1 << id-1);
+  if (!is_user_connected(id))
+  {
+    return PLUGIN_HANDLED;
+  }
+
+  camera_grenade_bits &= ~(1 << (id)-1);
   camera_grenade_to_follow[id] = 0;
-  
-  if (is_user_alive(id))
+
+  if (is_user_alive(id) || !USER_ENABLED(id))
   {
     return PLUGIN_HANDLED;
   }
@@ -848,16 +987,22 @@ public camera_grenade_unset(id)
 
 public camera_hook_set(id)
 {
-  camera_hooked[id] = true;
-  
+  if (is_user_connected(id))
+  {
+    camera_hooked[id] = true;
+  }
+
   return PLUGIN_HANDLED;
 }
 
 
 public camera_hook_unset(id)
 {
-  camera_hooked[id] = false;
-  
+  if (is_user_connected(id))
+  {
+    camera_hooked[id] = false;
+  }
+
   return PLUGIN_HANDLED;
 }
 
@@ -873,6 +1018,7 @@ public client_connect(id)
   
   player_follow_once[id] = false;
   player_aimed[id]  = 0;
+  last_target[id]   = 0;
   next_action[id]   = 0.0;
   player_follow[id] = NO_ENTITY;
 }
@@ -890,6 +1036,7 @@ public client_disconnected(id)
   
   player_follow_once[id] = false;
   player_aimed[id]  = 0;
+  last_target[id]   = 0;
   next_action[id]   = 0.0;
   player_follow[id] = NO_ENTITY;
 }
@@ -930,7 +1077,7 @@ public task_check_spec_aiming(task_id)
   
   for (new id = 1; id <= MaxClients; ++id)
   {
-    if (!USER_ENABLED(id) || is_user_alive(id))
+    if (!is_user_connected(id) || !USER_ENABLED(id) || is_user_alive(id))
     {
       continue;
     }
@@ -977,7 +1124,7 @@ public task_check_spec_aiming(task_id)
 
 public camera_ent_c4(id)
 {
-  if (is_user_alive(id))
+  if (!is_user_connected(id) || is_user_alive(id))
   {
     return PLUGIN_HANDLED;
   }
@@ -991,7 +1138,7 @@ public camera_ent_c4(id)
 
 public camera_ent_flag_red(id)
 {
-  if (is_user_alive(id))
+  if (!is_user_connected(id) || is_user_alive(id))
   {
     return PLUGIN_HANDLED;
   }
@@ -1004,7 +1151,7 @@ public camera_ent_flag_red(id)
 
 public camera_ent_flag_blue(id)
 {
-  if (is_user_alive(id))
+  if (!is_user_connected(id) || is_user_alive(id))
   {
     return PLUGIN_HANDLED;
   }
@@ -1018,8 +1165,13 @@ public camera_ent_flag_blue(id)
 
 public camera_ent_unset(id)
 {
-  player_follow[id]   = NO_ENTITY;
-  player_fixangle[id] = false;
+  if (is_user_connected(id))
+  {
+    player_follow[id]   = NO_ENTITY;
+    player_fixangle[id] = false;
+  }
+
+  return PLUGIN_HANDLED;
 }
 
 public camera_follow_c4(id)
@@ -1137,7 +1289,7 @@ camera_follow_ent(id, ent, fixangle=0, Float:distance=200.0, Float:height=60.0, 
 
 public camera_chase_set(id)
 {
-  if (is_user_alive(id))
+  if (!is_user_connected(id) || is_user_alive(id))
   {
     return PLUGIN_HANDLED;
   }
@@ -1151,7 +1303,7 @@ public camera_chase_set(id)
 public camera_chase_unset(id)
 {
   
-  if (is_user_alive(id))
+  if (!is_user_connected(id) || is_user_alive(id) || !USER_ENABLED(id))
   {
     return PLUGIN_HANDLED;
   }
@@ -1169,7 +1321,6 @@ public event_player_spawned(id)
   }
 
   cmd_obs(id);
-  // client_print_color(id, print_team_grey, "%s Those features are only available to ^3Spectators^1.", PREFIX);
 }
 
 
@@ -1187,7 +1338,6 @@ public event_player_joined_team()
   if (team[0] != 'S' && cs_get_user_team(id) != CS_TEAM_SPECTATOR)
   {
     cmd_obs(id);
-    // client_print_color(id, print_team_grey, "%s Observer features are only available to ^3Spectators^1.", PREFIX);
   }
 }
 
@@ -1206,7 +1356,7 @@ public task_fakeinput()
     }
 
     player_menu_info(id, menu, newmenu, page);
-    // DEBUG(id, print_chat, "(print_menu) (%02d) ret: %d, newmenu: %d, menu: %d", 1, ret, newmenu, menu);
+    // DEBUG(id, print_chat, "(print_menu) (%02d) ret: %d, menu: %d, newmenu: %d", id, menu, newmenu);
 
     if (newmenu == -1 && menu <= 0)
     {
@@ -1239,7 +1389,7 @@ public menu_fakeinput_handler(id, key)
   new slotcmd[7];
   formatex(slotcmd, charsmax(slotcmd), "slot%d", key);
 
-  //client_print(id, print_chat, "(menu_fakeinput_handler) (%02d) selected '%s'", id, slotcmd);
+  // DEBUG(id, print_chat, "(menu_fakeinput_handler) (%02d) selected '%s'", id, slotcmd);
 
   switch (key)
   {
@@ -1271,7 +1421,7 @@ public menu_fakeinput_handler(id, key)
   }
 
   // client_cmd(id, slotcmd);
-  set_task(0.1, "menu_fakeinput", 5234 + id);
+  set_task(0.2, "menu_fakeinput", 5234 + id);
 
   return PLUGIN_HANDLED;
 }
@@ -1295,10 +1445,33 @@ public cmd_obs(id)
 
   if (USER_ENABLED(id))
   {
-    client_print_color(id, id, "%s Advanced Observer is now ^4enabled^1.", PREFIX);
-    
+    new deadflag = entity_get_int(id, EV_INT_deadflag);
+    if (deadflag != DEAD_DEAD)
+    {
+      client_print_color(id, id, "%s Features can only be used^4 3 seconds^1 after dying.", PREFIX);
+      
+      camera_enabled_bits &= ~(1 << (id-1));
+      return PLUGIN_HANDLED;
+    }
+
     new Float:now = get_gametime();
+    client_print_color(id, id, "%s Advanced Observer is now ^4enabled^1.", PREFIX);
+
     next_action[id] = now + 3.0;
+    
+    camera_hooked[id]            = false;
+    camera_grenade_to_follow[id] = 0;
+    camera_ent_to_follow[id]     = 0;
+
+    player_follow_once[id] = false;
+    player_aimed[id]  = 0;
+    last_target[id]   = 0;
+    next_action[id]   = 0.0;
+    player_follow[id] = NO_ENTITY;
+
+    // Disable default observer inputs
+    set_ent_data_float(id, "CBasePlayer", "m_flNextObserverInput", now + 13371337);
+    set_ent_data(id, "CBasePlayer", "m_canSwitchObserverModes", 1);
 
     if (!task_exists(TASK_ID_FAKEINPUT))
     {
@@ -1323,9 +1496,12 @@ public cmd_obs(id)
 
 public cmd_obsdebug(id)
 {
-  camera_debug_bits ^= (1 << id-1);
-  client_print(id, print_chat, "Advanced Observer DEBUG %s.", camera_debug_bits & (1 << id-1) ? "enabled" : "disabled");
-  
+  if (is_user_connected(id))
+  {
+    camera_debug_bits ^= (1 << id-1);
+    client_print_color(id, print_team_red, "%s Debug %s^1.", PREFIX, camera_debug_bits & (1 << id-1) ? "^4enabled" : "^3disabled");
+  }
+
   return PLUGIN_HANDLED;
 }
 
@@ -1342,10 +1518,44 @@ public set_observer_crosshair(id, mode)
   message_end();
 }
 
+
+// Thanks @Arkshine and @souvikdas95
+// https://forums.alliedmods.net/showthread.php?t=238359&page=2
+public event_player_killed(victim, killer)
+{ 
+  if (!is_user_connected(victim))
+  {
+    return HAM_IGNORED;
+  }
+  
+  if (!is_user_alive(killer) || !camera_enabled_bits)
+  {
+    return HAM_IGNORED;
+  }
+  
+  for (new id = 1; id <= MaxClients; ++id)
+  {
+    if (!is_user_connected(id) || is_user_alive(id) || is_user_bot(id) || !USER_ENABLED(id))
+    {
+      continue;
+    }
+    
+    new spectated = entity_get_int(id, EV_INT_iuser2);
+    
+    if (id != victim && id != killer && spectated == victim)
+    {
+      observer_find_next_player(id, _, killer);
+    }
+  }
+  
+  return HAM_HANDLED;
+}
+
+
 // Spectator won't be fully blinded for quality of life reasons
 public event_flashed(id)
 {
-  if (is_user_alive(id) || !USER_ENABLED(id))
+  if (!is_user_connected(id) || is_user_alive(id) || !USER_ENABLED(id))
   {
     return PLUGIN_CONTINUE;
   }
@@ -1368,55 +1578,76 @@ public event_flashed(id)
   set_hudmessage(200, 50, 0, -1.0, -1.0, 1, tmp, tmp, 0.1, 0.1, -1);
   ShowSyncHudMsg(id, hudsync1, "[FLASHED]");
   
+  return PLUGIN_HANDLED;
+}
+
+public msg_ScreenFade(msgid, msgdest, msgent)
+{
+  // log_amx("(msg_ScreenFade) msgid: %d, msgdest: %d, msgent: %d", msgid, msgdest, msgent);
+  
+  if (!is_user_connected(msgent) || is_user_alive(msgent) || !USER_ENABLED(msgent))
+  {
+    // log_amx("(msg_ScreenFade) inside, %d, %d, %d", !is_user_connected(msgent), is_user_alive(msgent), !USER_ENABLED(msgent));
+    return PLUGIN_CONTINUE;
+  }
+  
+  new argc = get_msg_args();
+  // log_amx("(msg_ScreenFade) argc: %d", argc);
+
+  if (argc < 7)
+  {
+    return PLUGIN_CONTINUE;
+  }
+
+  new alpha = get_msg_arg_int(7);
+  if (alpha != 255)
+  {
+    return PLUGIN_CONTINUE;
+  }
+  
+  new duration  = get_msg_arg_int(1);
+  // new hold_time = get_msg_arg_int(2);
+  
+  new Float:tmp = duration / 4096.0 / 3.0;
+  
+  set_hudmessage(200, 50, 0, -1.0, -1.0, 1, tmp, tmp, 0.1, 0.1, -1);
+  ShowSyncHudMsg(msgent, hudsync1, "[FLASHED]");
+  
+  set_msg_arg_int(7, ARG_BYTE, 180);
+
   return PLUGIN_CONTINUE;
 }
 
-// Thanks @Arkshine and @souvikdas95
-// https://forums.alliedmods.net/showthread.php?t=238359&page=2
-public event_player_killed(victim, killer)
-{ 
-  if (!is_user_connected(victim))
-  {
-    return HAM_IGNORED;
-  }
-  
-  // When player is killed the engine sets "m_canSwitchObserverModes" to false, 
-  // and this variable disables the "specmode" command until respawned.
-  // https://github.com/s1lentq/ReGameDLL_CS/blob/8d6bf017f5c63efdb83b91b58f51f40c539ff10f/regamedll/dlls/player.cpp#L2017
-  // https://github.com/s1lentq/ReGameDLL_CS/blob/6fc1c2ff84b917cc086e664ebd4ab7e18f30a043/regamedll/dlls/client.cpp#L3188
 
-  if (USER_ENABLED(victim))
-  {
-    set_ent_data(victim, "CBasePlayer", "m_canSwitchObserverModes", 1);
-    
-    new Float:now = get_gametime();
-    next_action[victim] = now + 3.0;
-  }
-    
-  if (!is_user_alive(killer) || !camera_enabled_bits)
-  {
-    return HAM_IGNORED;
-  }
-  
-  for (new id = 1; id <= MaxClients; ++id)
-  {
-    if (is_user_alive(id) || is_user_bot(id))
-    {
-      continue;
-    }
+stock float_to_short(Float:value)
+{
+	return clamp(floatround(value * (1<<12)), 0, 0xFFFF);
+}
 
-    if (!USER_ENABLED(id))
-    {
-      continue;
-    }
-    
-    new spectated = entity_get_int(id, EV_INT_iuser2);
-    
-    if (id != victim && id != killer && spectated == victim)
-    {
-      observer_find_next_player(id, _, killer);
-    }
+
+stock fade_screen(id, Float:duration = 1.0, Float:fadetime = 1.0, flags = 0, r = 0, g = 0, b = 255, a = 75)
+{
+  if (is_user_connected(id))
+  {
+    message_begin(MSG_ONE_UNRELIABLE, MSG_ID_SCREENFADE, _, id);
   }
-  
-  return HAM_HANDLED;
+  else if (id == 0)
+  {
+    message_begin(MSG_BROADCAST, MSG_ID_SCREENFADE);
+  }
+  else
+  {
+    return 0;
+  }
+
+  write_short(float_to_short(fadetime));
+  write_short(float_to_short(duration));
+  write_short(_:flags);
+  write_byte(r);
+  write_byte(g);
+  write_byte(b);
+  write_byte(a);
+  message_end();
+
+  return 1;
 }
