@@ -10,7 +10,7 @@
 #include <xs>
 
 #define MOD_TITLE   "AdvancedObserver"
-#define MOD_VERSION "0.6"
+#define MOD_VERSION "0.6.1"
 #define MOD_AUTHOR  "lonewolf"
 
 #define PREFIX "^4[AdvancedObserver]^1"
@@ -187,7 +187,6 @@ public event_droppedthebomb_delayed()
     return;
   }
   
-
   new weaponbox = entity_get_edict(c4_ent, EV_ENT_owner);
   if (is_user_connected(weaponbox)) // owner is still a player, not the weaponbox
   {
@@ -537,6 +536,7 @@ stock observer_find_next_player(id, reverse=false, target=0, CsTeams:force_team=
   return newtarget;
 }
 
+
 stock observer_find_next_player_direction(id, Direction:dir, Float:maxdistance = 500.0, CsTeams:force_team=CS_TEAM_UNASSIGNED, target=0)
 {
   new current = target;
@@ -665,20 +665,18 @@ stock observer_find_next_player_direction(id, Direction:dir, Float:maxdistance =
   return closest;
 }
 
+
 public get_force_camera()
 {
   new ret;
   new fadetoblack = get_pcvar_num(cvar_fadetoblack);
-  // new fadetoblack = get_cvar_num("mp_fadetoblack");
 
   if (!fadetoblack)
   {
     ret = get_pcvar_num(cvar_forcechasecam);
-    // ret = get_cvar_num("mp_forcechasecam");
     if (ret == CAMERA_MODE_SPEC_ANYONE)
     {
       ret = get_pcvar_num(cvar_forcecamera);
-      // ret = get_cvar_num("mp_forcecamera");
     }
   }
   else 
@@ -716,6 +714,76 @@ stock observer_is_valid_target(id, target, bool:same_team=false, CsTeams:team=CS
 
   return target;
 }
+
+
+public observer_set_mode(id, mode)
+{
+  if (!is_user_connected(id))
+  {
+    return;
+  }
+  
+  new old_mode = entity_get_int(id, EV_INT_iuser1);
+  if (old_mode == mode)
+  {
+    return;
+  }
+  
+  new forcecamera = get_force_camera();
+  new CsTeams:team = cs_get_user_team(id);
+
+  if (team != CS_TEAM_SPECTATOR)
+  {
+    if (forcecamera == CAMERA_MODE_SPEC_ONLY_TEAM)
+    {
+      if (mode == OBS_ROAMING)
+      {
+        mode = OBS_MAP_FREE; // is this correct?
+      }
+    }
+    else if (forcecamera == CAMERA_MODE_SPEC_ONLY_FIRST_PERSON)
+    {
+      mode = OBS_IN_EYE;
+    }
+  }
+  
+  new target = get_ent_data_entity(id, "CBasePlayer", "m_hObserverTarget");
+
+  if (target)
+  {
+    target = observer_is_valid_target(id, target);
+  }
+
+  entity_set_int(id, EV_INT_iuser1, mode);
+  if (mode == OBS_ROAMING)
+  {
+    target = 0;
+  }
+  else
+  {
+    if (!target)
+    {
+      target = observer_find_next_player(id);
+      if (!target)
+      {
+        mode = OBS_ROAMING;
+        entity_set_int(id, EV_INT_iuser1, OBS_ROAMING);
+      }
+    }
+  }
+  
+  entity_set_int(id, EV_INT_iuser2, target);
+  entity_set_int(id, EV_INT_iuser3, 0);
+  
+  camera_move_to_eyes(id);
+  set_observer_crosshair(id, mode);
+  
+  set_ent_data(id, "CBasePlayer", "m_iObserverLastMode", mode);
+  set_ent_data(id, "CBasePlayer", "m_bWasFollowing", 0);
+  
+  observer_update_client_effects(id, old_mode);
+}
+
 
 public client_PostThink(id)
 {
@@ -814,73 +882,6 @@ public camera_follow_grenade(id, grenade)
   return PLUGIN_HANDLED;
 }
 
-public observer_set_mode(id, mode)
-{
-  if (!is_user_connected(id))
-  {
-    return;
-  }
-  
-  new old_mode = entity_get_int(id, EV_INT_iuser1);
-  if (old_mode == mode)
-  {
-    return;
-  }
-  
-  new forcecamera = get_force_camera();
-  new CsTeams:team = cs_get_user_team(id);
-
-  if (team != CS_TEAM_SPECTATOR)
-  {
-    if (forcecamera == CAMERA_MODE_SPEC_ONLY_TEAM)
-    {
-      if (mode == OBS_ROAMING)
-      {
-        mode = OBS_MAP_FREE; // is this correct?
-      }
-    }
-    else if (forcecamera == CAMERA_MODE_SPEC_ONLY_FIRST_PERSON)
-    {
-      mode = OBS_IN_EYE;
-    }
-  }
-  
-  new target = get_ent_data_entity(id, "CBasePlayer", "m_hObserverTarget");
-
-  if (target)
-  {
-    target = observer_is_valid_target(id, target);
-  }
-
-  entity_set_int(id, EV_INT_iuser1, mode);
-  if (mode == OBS_ROAMING)
-  {
-    target = 0;
-  }
-  else
-  {
-    if (!target)
-    {
-      target = observer_find_next_player(id);
-      if (!target)
-      {
-        mode = OBS_ROAMING;
-        entity_set_int(id, EV_INT_iuser1, OBS_ROAMING);
-      }
-    }
-  }
-  
-  entity_set_int(id, EV_INT_iuser2, target);
-  entity_set_int(id, EV_INT_iuser3, 0);
-  
-  camera_move_to_eyes(id);
-  set_observer_crosshair(id, mode);
-  
-  set_ent_data(id, "CBasePlayer", "m_iObserverLastMode", mode);
-  set_ent_data(id, "CBasePlayer", "m_bWasFollowing", 0);
-  
-  observer_update_client_effects(id, old_mode);
-}
 
 public camera_move_to_eyes(id)
 {
@@ -959,6 +960,7 @@ public think_grenade(grenade)
   return HAM_HANDLED;
 }
 
+
 public camera_grenade_set(id)
 {
   if (is_user_connected(id) && !is_user_alive(id) && USER_ENABLED(id))
@@ -1011,6 +1013,7 @@ public camera_hook_unset(id)
 
   return PLUGIN_HANDLED;
 }
+
 
 public client_connect(id)
 {
@@ -1071,8 +1074,10 @@ public task_find_flag_holders(task_id) // jctf_base.sma
   {
     set_task(2.0, "task_find_flag_holders", task_id);
   }
+
   set_task(0.5, "task_check_spec_aiming", task_id+1, .flags = "b");
 }
+
 
 public task_check_spec_aiming(task_id)
 {
@@ -1128,6 +1133,7 @@ public task_check_spec_aiming(task_id)
   }
 }
 
+
 public camera_ent_c4(id)
 {
   if (!is_user_connected(id) || is_user_alive(id))
@@ -1155,6 +1161,7 @@ public camera_ent_flag_red(id)
   return PLUGIN_HANDLED;
 }
 
+
 public camera_ent_flag_blue(id)
 {
   if (!is_user_connected(id) || is_user_alive(id))
@@ -1180,6 +1187,7 @@ public camera_ent_unset(id)
   return PLUGIN_HANDLED;
 }
 
+
 public camera_follow_c4(id)
 {
   if (!is_valid_ent(entity_c4))
@@ -1202,6 +1210,7 @@ public camera_follow_c4(id)
 
   return PLUGIN_HANDLED;
 }
+
 
 public camera_follow_flag(id, Entities:type)
 {
@@ -1242,7 +1251,8 @@ public camera_follow_flag(id, Entities:type)
   return PLUGIN_HANDLED;
 }
 
-camera_follow_ent(id, ent, fixangle=0, Float:distance=200.0, Float:height=60.0, Float:offset[3]={0.0, 0.0, 0.0})
+
+stock camera_follow_ent(id, ent, fixangle=0, Float:distance=200.0, Float:height=60.0, Float:offset[3]={0.0, 0.0, 0.0})
 {
   observer_set_mode(id, OBS_ROAMING);
   
@@ -1293,14 +1303,13 @@ camera_follow_ent(id, ent, fixangle=0, Float:distance=200.0, Float:height=60.0, 
   return PLUGIN_HANDLED;
 }
 
+
 public camera_chase_set(id)
 {
-  if (!is_user_connected(id) || is_user_alive(id))
+  if (is_user_connected(id) && !is_user_alive(id) && USER_ENABLED(id))
   {
-    return PLUGIN_HANDLED;
+    observer_set_mode(id, OBS_CHASE_LOCKED);
   }
-  
-  observer_set_mode(id, OBS_CHASE_LOCKED);
   
   return PLUGIN_HANDLED;
 }
@@ -1309,24 +1318,21 @@ public camera_chase_set(id)
 public camera_chase_unset(id)
 {
   
-  if (!is_user_connected(id) || is_user_alive(id) || !USER_ENABLED(id))
+  if (is_user_connected(id) && !is_user_alive(id) && USER_ENABLED(id))
   {
-    return PLUGIN_HANDLED;
+    observer_set_mode(id, OBS_IN_EYE);
   }
-  
-  observer_set_mode(id, OBS_IN_EYE);
   
   return PLUGIN_HANDLED;
 }
 
+
 public event_player_spawned(id)
 {
-  if (!is_user_connected(id) || !USER_ENABLED(id))
+  if (is_user_connected(id) && USER_ENABLED(id))
   {
-    return;
+    observer_set_mode(id, OBS_IN_EYE);
   }
-
-  cmd_obs(id);
 }
 
 
@@ -1384,6 +1390,7 @@ public menu_fakeinput(id)
   return PLUGIN_HANDLED;
 }
 
+
 public menu_fakeinput_handler(id, key)
 {
   if (!is_user_connected(id) || is_user_alive(id) || !USER_ENABLED(id))
@@ -1431,6 +1438,7 @@ public menu_fakeinput_handler(id, key)
 
   return PLUGIN_HANDLED;
 }
+
 
 public cmd_obs(id)
 {
@@ -1514,14 +1522,12 @@ public cmd_obsdebug(id)
 // https://github.com/s1lentq/ReGameDLL_CS/blob/efb06a7a201829bdbe13218bc5f5342e1f2ed8f1/regamedll/dlls/observer.cpp#L492
 public set_observer_crosshair(id, mode)
 {
-  if (mode != OBS_ROAMING)
+  if (mode == OBS_ROAMING)
   {
-    return;
+    message_begin(MSG_ONE_UNRELIABLE, MSG_ID_CROSSHAIR, _, id);
+    write_byte(1);
+    message_end();
   }
-
-  message_begin(MSG_ONE_UNRELIABLE, MSG_ID_CROSSHAIR, _, id);
-  write_byte(1);
-  message_end();
 }
 
 
@@ -1529,12 +1535,7 @@ public set_observer_crosshair(id, mode)
 // https://forums.alliedmods.net/showthread.php?t=238359&page=2
 public event_player_killed(victim, killer)
 { 
-  if (!is_user_connected(victim))
-  {
-    return HAM_IGNORED;
-  }
-  
-  if (!is_user_alive(killer) || !camera_enabled_bits)
+  if (!camera_enabled_bits || !is_user_connected(victim) || !is_user_alive(killer))
   {
     return HAM_IGNORED;
   }
@@ -1546,14 +1547,15 @@ public event_player_killed(victim, killer)
       continue;
     }
     
-    new spectated = entity_get_int(id, EV_INT_iuser2);
-    
     if (id != victim && id != killer)
     {
+      new spectated = entity_get_int(id, EV_INT_iuser2);
+
       if (spectated == victim)
       {
         observer_find_next_player(id, _, killer);
       }
+
       if (victim == last_target[id])
       {
         last_target[id] = killer;
@@ -1596,16 +1598,12 @@ public event_flashed(id)
 
 public msg_ScreenFade(msgid, msgdest, msgent)
 {
-  // log_amx("(msg_ScreenFade) msgid: %d, msgdest: %d, msgent: %d", msgid, msgdest, msgent);
-  
   if (!is_user_connected(msgent) || is_user_alive(msgent) || !USER_ENABLED(msgent))
   {
-    // log_amx("(msg_ScreenFade) inside, %d, %d, %d", !is_user_connected(msgent), is_user_alive(msgent), !USER_ENABLED(msgent));
     return PLUGIN_CONTINUE;
   }
   
   new argc = get_msg_args();
-  // log_amx("(msg_ScreenFade) argc: %d", argc);
 
   if (argc < 7)
   {
@@ -1619,8 +1617,6 @@ public msg_ScreenFade(msgid, msgdest, msgent)
   }
   
   new duration  = get_msg_arg_int(1);
-  // new hold_time = get_msg_arg_int(2);
-  
   new Float:tmp = duration / 4096.0 / 3.0;
   
   set_hudmessage(200, 50, 0, -1.0, -1.0, 1, tmp, tmp, 0.1, 0.1, -1);

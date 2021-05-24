@@ -26,13 +26,31 @@ Brings many quality-of-life features for spectators/observers focused on Clan-vs
 
 * New key (+camera_grenade) to follow grenades like CSGO;
 * Observers will be able to see even if target is blinded (like CSGO);
-* Find player by proximity and direction with WASD keys;
+* Find player by proximity and direction using WASD keys;
+* While in Free Look switches to nearest target in Observer's vision just by left clicking (+attack);
 * Fast deathcam, automatically switches targets for fast-paced combat instead of default random next player;
 * New key (+camera_c4) to switch target to C4 owner or entity if dropped or planted;
 * New keys (+camera_flag_red/+camera_flag_blue) to support [Digi's jCTF](https://github.com/OsweRRR/jCTF-by-Digi) matches;
 * Fixes missing observer's crosshair;
 * Fixes wrong angles and origin when switching to Free Look;
-* Fixes bugs related to 'mp_forcecamera' and targets;
+* Fixes bugs related to 'mp_forcecamera', "mp_forcechasecam" and targets;
+
+#### Commands
+
+| Command | Alternative | Description |
+| --- | --- | --- |
+| say /obs | | Enable/disable Advanced Observer features |
+| say /obsdebug | | Enable/disable Advanced Observer debug |
+| say /debug | | Print debug |
+| +camera_grenade | +reload | Real time target's grenade following |
+| | slot1 | Switches target to next Terrorist alive |
+| | slot2 | Switches target to next Counter-terrorist alive |
+| +camera_c4 | slot5 | Follow player holding C4 or C4 entity if dropped or planted |
+| +camera_flag_red | slot6 | Follow player holding Red Flag or Red Flag entity if dropped or in stand |
+| +camera_flag_blue | slot7 | Follow player holding Blue Flag or Blue Flag entity if dropped or in stand |
+| +camera_chase | | Hold key to keep Observer mode to Locked Chase |
+| +camera_hook | | Switch to aimed target while in Free look |
+
 
 ### [AimPrecision](./lonewolf-AimPrecision.sma)
 
