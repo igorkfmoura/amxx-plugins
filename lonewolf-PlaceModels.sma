@@ -4,7 +4,7 @@
 #include <json>
 
 #define PLUGIN  "PlaceModels"
-#define VERSION "0.0.2"
+#define VERSION "0.0.3"
 #define AUTHOR  "lonewolf"
 
 new const CHAT_PREFIX[] = "^4[PlaceModels]^1"
@@ -13,12 +13,37 @@ new JSON_FILE[96] = "PlaceModels.json";
 new CONFIG_PATH[64];
 
 new JSON:root;
-new JSON:precache_models;
-new precache_models_count;
+
+enum _:Model
+{
+  ENTITY,
+  MODEL_NUM,
+  SKIN,
+  Float:ORIGIN[3],
+  Float:ANGLES[3]
+};
+
+enum _:Precache
+{
+  PATH[64],
+  SKINS_NUM
+};
+
+new Array:models;
+new Array:models_precached;
+
+public plugin_end()
+{
+  ArrayDestroy(models);
+  ArrayDestroy(models_precached);
+}
 
 
 public plugin_precache()
 {
+  models = ArrayCreate(Model);
+  models_precached = ArrayCreate(Precache);
+
   get_configsdir(CONFIG_PATH, charsmax(CONFIG_PATH));
   format(JSON_FILE, charsmax(JSON_FILE), "%s/%s", CONFIG_PATH, JSON_FILE);
 
@@ -34,62 +59,170 @@ public plugin_precache()
     set_fail_state("[%s] Json isn't an object!", PLUGIN);
   }
 
-  if (!json_object_has_value(root, "precache_models"))
+  if (!json_object_has_value(root, "models_precached"))
   {
-    set_fail_state("[%s] Json don't have 'precache_models' value!", PLUGIN);
+    set_fail_state("[%s] Json don't have 'models_precached' value!", PLUGIN);
   }
 
-  precache_models = json_object_get_value(root, "precache_models");
-  if (precache_models == Invalid_JSON)
+  new JSON:models_to_precache = json_object_get_value(root, "models_precached");
+  if (models_to_precache == Invalid_JSON)
   {
-    set_fail_state("[%s] 'precache_models' == Invalid_JSON!", PLUGIN);
+    set_fail_state("[%s] 'models_precached' == Invalid_JSON!", PLUGIN);
   }
-  static model_path[128];
-  if (json_get_type(precache_models) != JSONArray)
+  
+  if (json_get_type(models_to_precache) != JSONArray)
   {
-    // json_object_get_string(root, "precache_models", model_path, charsmax(model_path));
-    // precache_model(model_path);
-    set_fail_state("[%s] 'precache_models' is not an array!", PLUGIN);
+    set_fail_state("[%s] 'models_precached' is not an array!", PLUGIN);
   }
-  else
+  
+  new JSON:tmp;
+  new count = json_array_get_count(models_to_precache);
+  for (new i = 0; i < count; ++i)
   {
-    new JSON:tmp;
-    precache_models_count = json_array_get_count(precache_models);
-    for (new i = 0; i < precache_models_count; ++i)
+    tmp = json_array_get_value(models_to_precache, i);
+    if (tmp != Invalid_JSON)
     {
-      tmp = json_array_get_value(precache_models, i);
-      if (tmp != Invalid_JSON)
-      {
-        json_object_get_string(tmp, "path", model_path, charsmax(model_path));
-        precache_model(model_path);
+      new model_to_precache[Precache];
+      json_object_get_string(tmp, "path", model_to_precache[PATH], charsmax(model_to_precache[PATH]));
+      model_to_precache[SKINS_NUM] = json_object_get_number(tmp, "skins_num");
 
-        server_print("[%s] Precached '%s'.", PLUGIN, model_path);
-      }
+      precache_model(model_to_precache[PATH]);
+      ArrayPushArray(models_precached, model_to_precache);
+
+      server_print("[%s] Precached '%s'.", PLUGIN, model_to_precache[PATH]);
     }
-
-    json_free(tmp);
   }
+  
+  json_free(tmp);
+  json_free(models_to_precache)
 }
+
 
 public plugin_init()
 {
   register_plugin(PLUGIN, VERSION, AUTHOR);
   
+  models_load_json();
+
   register_clcmd("test", "cmd_test");
+  register_clcmd("say /place", "cmd_place");
 }
+
 
 public cmd_test(id)
 {
-  static c = 0;
+  if (!is_user_connected(id))
+  {
+    return PLUGIN_HANDLED;
+  }
 
-  new newmodel = model_create(0, c > 1 ? 1 : c);
-  model_place(id, newmodel);
+  new newmodel = model_create(0, random_num(0, 1));
+  model_place_on_crosshair(id, newmodel);
 
-  c++;
   return PLUGIN_CONTINUE;
 }
 
-public model_create(model_number, skin)
+
+public cmd_place(id)
+{
+  if (!is_user_connected(id))
+  {
+    return PLUGIN_HANDLED;
+  }
+
+  if (!(get_user_flags(id) & ADMIN_CVAR))
+  {
+    client_print_color(id, print_team_red, "%s ^4/place^1 command is exclusive to ^3admins^1.");
+    return PLUGIN_HANDLED;
+  }
+
+  menu_place(id);
+
+  return PLUGIN_HANDLED;
+}
+
+
+public menu_place(id)
+{
+  new menu = menu_create("Menu PlaceModels", "menu_place_handler");
+
+  new count = ArraySize(models);
+  for (new i = 0; i < count; ++i)
+  {
+    new item[64];
+    new model[Model];
+    new precached[Precache];
+
+    ArrayGetArray(models, i, model);
+    ArrayGetArray(models_precached, model[MODEL_NUM], precached);
+
+    format(item, charsmax(item), "\y%s\d [%d]", precached[PATH], model[SKIN]);
+    menu_additem(menu, item, fmt("%s", i), ADMIN_CVAR);
+  }
+
+  menu_additem(menu, "New", "new", ADMIN_CVAR);
+  menu_display(id, menu);
+}
+
+
+public menu_place_handler(id, menu, item)
+{
+  return PLUGIN_CONTINUE;
+}
+
+
+public models_load_json()
+{
+  new JSON:models_placed = json_object_get_value(root, "models_placed");
+
+  if (json_get_type(models_placed) != JSONArray)
+  {
+    json_free(models_placed);
+    set_fail_state("[%s] 'models_placed' is not an array!", PLUGIN);
+  }
+  
+  new JSON:tmp;
+  new JSON:tmp2;
+  new count = json_array_get_count(models_placed);
+  for (new i = 0; i < count; ++i)
+  {
+    tmp = json_array_get_value(models_placed, i);
+    if (tmp == Invalid_JSON)
+    {
+      continue;
+    }
+    
+    new model[Model];
+    model[MODEL_NUM] =  json_object_get_number(tmp, "model_num");
+    model[SKIN]      =  json_object_get_number(tmp, "skin");
+
+    tmp2 = json_object_get_value(tmp, "origin");
+    
+    new Float:origin[3];
+    model[ORIGIN][0] = origin[0] = json_array_get_real(tmp2, 0); 
+    model[ORIGIN][1] = origin[1] = json_array_get_real(tmp2, 1);
+    model[ORIGIN][2] = origin[2] = json_array_get_real(tmp2, 2);
+
+    tmp2 = json_object_get_value(tmp, "angles");
+
+    new Float:angles[3];
+    model[ANGLES][0] = angles[0] = json_array_get_real(tmp2, 0); 
+    model[ANGLES][1] = angles[1] = json_array_get_real(tmp2, 1);
+    model[ANGLES][2] = angles[2] = json_array_get_real(tmp2, 2);
+
+    model[ENTITY] = model_create(model[MODEL_NUM], model[SKIN]);
+    model_move(model[ENTITY], origin, angles);
+
+    ArrayPushArray(models, model);
+  }
+  
+  json_free(models_placed);
+  json_free(tmp);
+  json_free(tmp2);
+}
+
+
+public model_create(model_num, skin)
 {
   new model = create_entity("info_target");
   if (!is_valid_ent(model))
@@ -98,29 +231,20 @@ public model_create(model_number, skin)
     return PLUGIN_HANDLED;
   }
 
-  new JSON:tmp;
-  tmp = json_array_get_value(precache_models, model_number);
-  if (tmp == Invalid_JSON)
-  {
-    set_fail_state("Failed to retrieve model #%d", model_number);
-  }
-
-  static model_path[128];
-  json_object_get_string(tmp, "path", model_path, charsmax(model_path));
+  new precached[Precache];
+  ArrayGetArray(models_precached, model_num, precached);
 
   entity_set_string(model, EV_SZ_classname, "placedmodel");
-  entity_set_model(model, model_path);
+  entity_set_model(model, precached[PATH]);
   entity_set_int(model, EV_INT_skin, skin);
-  // entity_set_size(model, Float:{0.0, 0.0, 0.0}, Float:{16.0, 16.0, 16.0});
-  // entity_set_int(model, EV_INT_solid, SOLID_NOT);
-  // set_rendering(model);
 
-  server_print("[%s] Created model '%s' with skin %d [%d].", PLUGIN, model_path, skin, model);
+  server_print("[%s] Created model '%s' with skin %d [%d].", PLUGIN, precached[PATH], skin, model);
 
   return model;
 }
 
-public model_place(id, model)
+
+public model_place_on_crosshair(id, model)
 {
   new Float:start[3];
   new Float:view_ofs[3];
@@ -160,12 +284,24 @@ public model_place(id, model)
   end[2] += normal[2] * -15.0;
   
   vector_to_angle(normal, angles);
-  entity_set_origin(model, end);
-  entity_set_vector(model, EV_VEC_angles, angles);
 
-  client_print_color(id, print_team_default, "%s Placed model #%d ^4successfully^1.", CHAT_PREFIX, model);
-  client_print_color(id, print_team_red,     "%s  ORIGIN: [^3%0.1f^1, ^3%0.1f^1, ^3%0.1f^1]", CHAT_PREFIX, end[0], end[1], end[2]);
-  client_print_color(id, print_team_blue,    "%s  ANGLES: [^3%0.1f^1, ^3%0.1f^1, ^3%0.1f^1]", CHAT_PREFIX, angles[0], angles[1], angles[2]);
+  model_move(model, end, angles);
 
   return PLUGIN_CONTINUE;
+}
+
+
+public model_move(model, Float:origin[3], Float:angles[3])
+{
+  if (!is_valid_ent(model))
+  {
+    return;
+  }
+
+  entity_set_origin(model, origin);
+  entity_set_vector(model, EV_VEC_angles, angles);
+
+  client_print_color(0, print_team_default, "%s Placed model #%d ^4successfully^1.", CHAT_PREFIX, model);
+  client_print_color(0, print_team_red,     "%s  ORIGIN: [^3%0.1f^1, ^3%0.1f^1, ^3%0.1f^1]", CHAT_PREFIX, origin[0], origin[1], origin[2]);
+  client_print_color(0, print_team_blue,    "%s  ANGLES: [^3%0.1f^1, ^3%0.1f^1, ^3%0.1f^1]", CHAT_PREFIX, angles[0], angles[1], angles[2]);
 }
