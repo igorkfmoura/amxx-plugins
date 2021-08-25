@@ -8,7 +8,7 @@
 #include <xs>
 
 #define PLUGIN  "MaxSpeed"
-#define VERSION "0.13"
+#define VERSION "0.14"
 #define AUTHOR  "lonewolf"
 
 #define PREFIX "^4[MaxSpeed]^1"
@@ -21,6 +21,7 @@ new cvar_swimspeed;
 new cvar_usespeed;
 new cvar_debug;
 new cvar_noaccel;
+new cvar_relative;
 
 new bool:enabled;
 new Float:maxspeed;
@@ -31,6 +32,7 @@ new Float:usespeed;
 
 new debug_is_enabled;
 new noaccel_flags;
+new maxspeed_is_relative;
 
 new Float:user_oldspeed[MAX_PLAYERS+1];
 new Float:hud_time[MAX_PLAYERS+1];
@@ -78,10 +80,12 @@ public plugin_init()
   cvar_usespeed  = create_cvar("amx_maxspeed_usespeed",  "400",  _, "<0-2000> Maximum speed holding +use");
   cvar_debug     = create_cvar("amx_maxspeed_debug",     "0",    _, "<0/1> Enables ^"say /speed^" command");
   cvar_noaccel   = create_cvar("amx_maxspeed_noaccel",   "0",    _, "<0-15> Bitsum: 1-Airstrafe noaccel, 2-Swim noaccel, 4-Surf noaccel, 8-Use noaccel");
+  cvar_relative  = create_cvar("amx_maxspeed_relative",  "1",    _, "<0/1> Maximum speed is relative to weapon maxspeed");
   
   bind_pcvar_num(cvar_enabled,     enabled);
   bind_pcvar_num(cvar_debug,       debug_is_enabled);
   bind_pcvar_num(cvar_noaccel,     noaccel_flags);
+  bind_pcvar_num(cvar_relative,    maxspeed_is_relative);
   bind_pcvar_float(cvar_maxspeed,  maxspeed);
   bind_pcvar_float(cvar_surfspeed, surfspeed);
   bind_pcvar_float(cvar_duckspeed, duckspeed);
@@ -246,7 +250,12 @@ public client_PostThink(id)
   {
     player_maxspeed = user_oldspeed[id];
   }
-  
+  else if (maxspeed_is_relative)
+  {
+    new Float:factor = entity_get_float(id, EV_FL_maxspeed) / 250.0; // 250.0 is knife's maxspeed
+    player_maxspeed *= factor;
+  }
+
   if (!is_spectator && (speed > player_maxspeed))
   {
     new Float:c;
