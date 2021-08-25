@@ -11,7 +11,7 @@
 #include <xs>
 
 #define PLUGIN  "EnhancedMultiJump"
-#define VERSION "0.5"
+#define VERSION "0.6"
 #define AUTHOR  "lonewolf"
 
 // https://github.com/s1lentq/ReGameDLL_CS/blob/f57d28fe721ea4d57d10c010d15d45f05f2f5bad/regamedll/pm_shared/pm_shared.cpp#L2477
@@ -20,6 +20,7 @@
 new const Float:JUMP_TIME_WAIT = 0.2;
 new const Float:JUMP_SPEED     = 268.32815729997475;
 new const Float:FUSER2_DEFAULT = 1315.789429;
+new const Float:BUNNYHOP_MAX_SPEED_FACTOR = 1.2;
 
 new bool:ready_to_jump[MAX_PLAYERS+1];
 
@@ -29,13 +30,14 @@ new Float:fuser2[MAX_PLAYERS+1];
 new airjumps[MAX_PLAYERS+1];
 
 new pcvar_maxjumps;
-
+new pcvar_airjumplikebhop;
 
 public plugin_init()
 {
   register_plugin(PLUGIN, VERSION, AUTHOR)
   
   pcvar_maxjumps = create_cvar("amx_maxjumps", "1", _, "<int> maximum number of airjumps");
+  pcvar_airjumplikebhop = create_cvar("amx_airjumplikebhop", "1", _, "<int> Treat jump horizontal speed like bhop");
   
   new maxjumps = get_pcvar_num(pcvar_maxjumps);
   arrayset(airjumps, maxjumps, sizeof(airjumps));
@@ -110,6 +112,20 @@ public client_PostThink(id)
   
   new Float:upspeed = velocity[2];
   
+  if (get_pcvar_num(pcvar_airjumplikebhop))
+  {
+    new Float:speed = xs_sqrt(velocity[0]*velocity[0] + velocity[1]*velocity[1] + 16.0) // simulating upspeed of -4.0 u/s as in a normal bhop
+    new Float:maxspeed = entity_get_float(id, EV_FL_maxspeed);
+    new Float:maxscaledspeed = BUNNYHOP_MAX_SPEED_FACTOR * maxspeed;
+
+    if (maxscaledspeed > 0.0 && speed > maxscaledspeed)
+    {
+      new Float:fraction = (maxscaledspeed / speed) * 0.8;
+      velocity[0] *= fraction;
+      velocity[1] *= fraction;
+    }
+  }
+
   if (upspeed <= 0.0)
   {
     velocity[2] = JUMP_SPEED;

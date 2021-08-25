@@ -129,7 +129,8 @@ Based on twistedeuphoria's [MultiJump](https://forums.alliedmods.net/showthread.
 
 | Cvar | Default | Description |
 | --- | --- | --- |
-|amx_maxjumps | "1" | \<int\> maximum number of airjumps |
+| amx_maxjumps | "1" | \<int\> maximum number of airjumps |
+| amx_airjumplikebhop | "0" | \<0\|1\> Horizontal speed of airjump works like in a bhop in CS 1.6, nerfing jumping in speeds higher than ~120% of weapon's maximum speed |
 
 ### [EnhancedParachuteLite](./lonewolf-EnhancedParachuteLite.sma)
 
