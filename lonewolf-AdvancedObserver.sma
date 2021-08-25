@@ -10,7 +10,7 @@
 #include <xs>
 
 #define MOD_TITLE   "AdvancedObserver"
-#define MOD_VERSION "0.6.1"
+#define MOD_VERSION "0.6.2"
 #define MOD_AUTHOR  "lonewolf"
 
 #define PREFIX "^4[AdvancedObserver]^1"
@@ -57,6 +57,8 @@ static const colors[CsTeams][3] =
 new MSG_ID_SCREENFADE;
 new MSG_ID_CROSSHAIR;
 new MSG_ID_SPECHEALTH;
+new MSG_ID_BARTIME;
+new MSG_ID_BARTIME2;
 
 new entities_flag[CsTeams];
 new entity_c4 = 0;
@@ -133,7 +135,9 @@ public plugin_init()
   MSG_ID_SCREENFADE = get_user_msgid("ScreenFade");
   MSG_ID_CROSSHAIR  = get_user_msgid("Crosshair");
   MSG_ID_SPECHEALTH = get_user_msgid("SpecHealth");
-  
+  MSG_ID_BARTIME    = get_user_msgid("BarTime");
+  MSG_ID_BARTIME2   = get_user_msgid("BarTime2");
+
   // register_event("ScreenFade", "event_flashed", "b", "7=255");
   register_message(MSG_ID_SCREENFADE, "msg_ScreenFade");
   
@@ -365,24 +369,40 @@ public client_cmdStart(id)
 
 stock observer_update_client_effects(id, old_mode)
 {
-  new bool:clear_progresss = false;
+  new bool:clear_progress = false;
   new bool:clear_blindness = false;
   new bool:clear_nightvision = false;
   new bool:blindness_ok =  get_pcvar_num(cvar_fadetoblack) == 0;
-  // new bool:blindness_ok =  get_cvar_num("mp_fadetoblack") == 0;
 
   if (entity_get_int(id, EV_INT_iuser1) == OBS_IN_EYE)
   {
-    clear_progresss = true;
+    clear_progress = true;
     clear_blindness = true;
     clear_nightvision = true;
 
     new player = get_ent_data_entity(id, "CBasePlayer", "m_hObserverTarget");
     if (is_user_connected(player))
     {
-      // new progress = get_ent_data_float(id, "CBasePlayer", "m_progressStart");
-      // TODO: implement CBasePlayer:SetProgressBarTime2
-      // https://github.com/s1lentq/ReGameDLL_CS/blob/9736437cb8e6bff3e0044d91422ef38edce269f2/regamedll/dlls/player.cpp#L1778
+      new Float:progress_start = get_ent_data_float(player, "CBasePlayer", "m_progressStart");
+
+      if (progress_start > 0.0)
+      {
+        new Float:progress_end = get_ent_data_float(player, "CBasePlayer", "m_progressEnd");
+
+        if (progress_end > progress_start)
+        {
+          new Float:now = get_gametime();
+
+          if (progress_end > now)
+          {
+            new Float:percent_remaining = now - progress_start;
+            new bar_time = floatround(progress_end - progress_start, floatround_floor);
+
+            CBasePlayer_SetProgressBarTime2(id, bar_time, percent_remaining);
+            clear_progress = false;
+          }
+        }
+      }
 
       if (blindness_ok)
       {
@@ -433,16 +453,17 @@ stock observer_update_client_effects(id, old_mode)
   }
   else if (old_mode == OBS_IN_EYE)
   {
-    clear_progresss = true;
+    clear_progress = true;
     clear_blindness = true;
     clear_nightvision = true;
   }
 
-  // TODO
-  // if (clear_progress)
-  // {
+  if (clear_progress)
+  {
+    CBasePlayer_SetProgressBarTime(id, 0); 
+  }
 
-  // }
+  
   if (blindness_ok && clear_blindness)
   {
     fade_screen(id, 0.001, 0.0, 0, 0, 0, 0, 0);
@@ -455,6 +476,56 @@ stock observer_update_client_effects(id, old_mode)
 
   // }
 
+}
+
+
+stock CBasePlayer_SetProgressBarTime(id, time = 0)
+{
+  if (time)
+  {
+    new Float:now = get_gametime();
+    set_ent_data_float(id, "CBasePlayer", "m_progressStart", now);
+    set_ent_data_float(id, "CBasePlayer", "m_progressEnd",   now + time);
+  }
+  else
+  {
+    set_ent_data_float(id, "CBasePlayer", "m_progressStart", 0.0);
+    set_ent_data_float(id, "CBasePlayer", "m_progressEnd",   0.0);
+  }
+
+  message_begin(MSG_ONE_UNRELIABLE, MSG_ID_BARTIME, _, id);
+  write_short(time);
+  message_end();
+}
+
+
+stock CBasePlayer_SetProgressBarTime2(id, time = 0, Float:time_elapsed)
+{
+  new Float:progress_start = 0.0;
+  new Float:progress_end   = 0.0;
+
+  if (time)
+  {
+    new Float:now  = get_gametime();
+    progress_start = now - time_elapsed;
+    progress_end   = now + time - time_elapsed;
+
+    set_ent_data_float(id, "CBasePlayer", "m_progressStart", progress_start);
+    set_ent_data_float(id, "CBasePlayer", "m_progressEnd",   progress_end);
+  }
+  else
+  {
+    time_elapsed = 0.0;
+    set_ent_data_float(id, "CBasePlayer", "m_progressStart", 0.0);
+    set_ent_data_float(id, "CBasePlayer", "m_progressEnd",   0.0);
+  }
+
+  new start_percent = floatround((time_elapsed * 100.0) / (progress_end - progress_start));
+
+  message_begin(MSG_ONE_UNRELIABLE, MSG_ID_BARTIME2, _, id);
+  write_short(time);
+  write_short(start_percent);
+  message_end();
 }
 
 
