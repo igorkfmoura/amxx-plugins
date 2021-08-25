@@ -361,7 +361,7 @@ menu_cameras(id, page=0)
 
 public menu_check_enabled_callback(id, menu, item)
 {
-  return enabled && spec_only && (cs_get_user_team(id) == CS_TEAM_SPECTATOR) ? ITEM_IGNORE : ITEM_DISABLED;
+  return enabled && (!spec_only || (cs_get_user_team(id) == CS_TEAM_SPECTATOR)) ? ITEM_IGNORE : ITEM_DISABLED;
 }
 
 
