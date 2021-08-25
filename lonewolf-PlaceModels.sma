@@ -4,7 +4,7 @@
 #include <json>
 
 #define PLUGIN  "PlaceModels"
-#define VERSION "0.0.3"
+#define VERSION "0.0.4"
 #define AUTHOR  "lonewolf"
 
 new const CHAT_PREFIX[] = "^4[PlaceModels]^1"
@@ -104,22 +104,7 @@ public plugin_init()
   
   models_load_json();
 
-  register_clcmd("test", "cmd_test");
   register_clcmd("say /place", "cmd_place");
-}
-
-
-public cmd_test(id)
-{
-  if (!is_user_connected(id))
-  {
-    return PLUGIN_HANDLED;
-  }
-
-  new newmodel = model_create(0, random_num(0, 1));
-  model_place_on_crosshair(id, newmodel);
-
-  return PLUGIN_CONTINUE;
 }
 
 
@@ -142,7 +127,7 @@ public cmd_place(id)
 }
 
 
-public menu_place(id)
+stock menu_place(id, page=0)
 {
   new menu = menu_create("Menu PlaceModels", "menu_place_handler");
 
@@ -156,20 +141,182 @@ public menu_place(id)
     ArrayGetArray(models, i, model);
     ArrayGetArray(models_precached, model[MODEL_NUM], precached);
 
-    format(item, charsmax(item), "\y%s\d [%d]", precached[PATH], model[SKIN]);
+    format(item, charsmax(item), "\d[%d] \y%s\d [%d]", model[ENTITY], precached[PATH], model[SKIN]);
     menu_additem(menu, item, fmt("%s", i), ADMIN_CVAR);
   }
 
   menu_additem(menu, "New", "new", ADMIN_CVAR);
-  menu_display(id, menu);
+  menu_display(id, menu, page);
 }
 
 
 public menu_place_handler(id, menu, item)
 {
+  if (!is_user_connected(id) || (item == MENU_EXIT))
+  {
+    menu_destroy(menu);
+    return PLUGIN_HANDLED;
+  }
+
+  new info[4];
+  menu_item_getinfo(menu, item, _, info, charsmax(info));
+
+  if (equal(info, "new"))
+  {
+    new model[Model];
+    model[MODEL_NUM] = 0;
+    model[SKIN]      = 0;
+
+    model[ORIGIN][0] = 0.0; 
+    model[ORIGIN][1] = 0.0;
+    model[ORIGIN][2] = 0.0;
+
+    model[ANGLES][0] = 0.0; 
+    model[ANGLES][1] = 0.0;
+    model[ANGLES][2] = 0.0;
+
+    model[ENTITY] = model_create(model[MODEL_NUM], model[SKIN]);
+    ArrayPushArray(models, model);
+
+    menu_destroy(menu);
+    menu_place(id);
+    return PLUGIN_CONTINUE;
+  }
+
+  menu_destroy(menu);
+
+  new count = ArraySize(models);
+  if (item >= count)
+  {
+    return PLUGIN_CONTINUE;  
+  }
+
+  menu_place_edit(id, item);
+
   return PLUGIN_CONTINUE;
 }
 
+
+public menu_place_edit(id, item)
+{
+  new model[Model];
+  new precached[Precache];
+  
+  ArrayGetArray(models, item, model);
+  ArrayGetArray(models_precached, model[MODEL_NUM], precached);
+
+  new menu = menu_create(fmt("Edit PlacedModel #%d [%d]", item, model[ENTITY]), "menu_place_edit_handler");
+  
+  new info[4];
+  num_to_str(item, info, charsmax(info));
+
+  new label[64];
+  
+  formatex(label, charsmax(label), "\y%s", precached[PATH]);
+  menu_additem(menu, label, info);
+
+  formatex(label, charsmax(label), "Skin: \y%d", model[SKIN]);
+  menu_additem(menu, label, info);
+
+  formatex(label, charsmax(label), "Move to Crosshair");
+  menu_additem(menu, label, info);
+  
+  // formatex(label, charsmax(label), "Glow test");
+  // menu_additem(menu, label, info);
+
+  menu_display(id, menu);
+  return PLUGIN_CONTINUE;
+}
+
+
+public menu_place_edit_handler(id, menu, item)
+{
+  if (!is_user_connected(id))
+  {
+    menu_destroy(menu);
+    return PLUGIN_HANDLED;
+  }
+
+  if (item == MENU_EXIT)
+  {
+    menu_destroy(menu);
+    menu_place(id);
+    return PLUGIN_HANDLED;
+  }
+
+  new info[4];
+  menu_item_getinfo(menu, item, _, info, charsmax(info));
+  new n = str_to_num(info);
+
+  new model[Model];
+  ArrayGetArray(models, n, model);
+
+  if (item == 0)
+  {
+    new count = ArraySize(models_precached);
+    new model_num = (model[MODEL_NUM] + 1) % count;
+    if (model_num == model[MODEL_NUM])
+    {
+      menu_destroy(menu);
+      menu_place_edit(id, n);
+      return PLUGIN_CONTINUE;
+    }
+
+    new precached[Precache];
+    ArrayGetArray(models_precached, model_num, precached);
+
+    entity_set_model(model[ENTITY], precached[PATH]);
+    model[MODEL_NUM] = model_num;
+
+  }
+  else if (item == 1)
+  {
+    new precached[Precache];
+    ArrayGetArray(models_precached, model[MODEL_NUM], precached);
+
+    new skin = (model[SKIN] + 1) % precached[SKINS_NUM];
+    
+    entity_set_int(model[ENTITY], EV_INT_skin, skin);
+    model[SKIN] = skin;
+  }
+  else if (item == 2)
+  {
+    model_place_on_crosshair(id, n);
+  }
+  else if (item == 3)
+  {
+    if (!task_exists(id + 13561))
+    {
+      set_task(0.3, "glow_test", model[ENTITY] + 13561, _, _, "b");
+    }
+  }
+
+  ArraySetArray(models, n, model);
+
+  menu_destroy(menu);
+  menu_place_edit(id, n);
+
+  return PLUGIN_CONTINUE;
+}
+
+
+public glow_test(id)
+{
+  id -= 13561;
+  static color = 0xFF;
+
+  new r = ((color & 0xFF    ) >> (0*8)) & 0xFF;
+  new g = ((color & 0xFFFF  ) >> (1*8)) & 0xFF;
+  new b = ((color & 0xFFFFFF) >> (2*8)) & 0xFF;
+  
+  client_print(0, print_chat, "color: %d, r: %d, g: %d, b: %d", color, r, g, b);
+
+  set_ent_rendering(id, kRenderFxGlowShell, r, g, b, _, 255);
+
+  color <<= 1;
+  color = (color | (color >> (3*8))) & 0xFFFFFF;
+
+}
 
 public models_load_json()
 {
@@ -211,7 +358,7 @@ public models_load_json()
     model[ANGLES][2] = angles[2] = json_array_get_real(tmp2, 2);
 
     model[ENTITY] = model_create(model[MODEL_NUM], model[SKIN]);
-    model_move(model[ENTITY], origin, angles);
+    entity_move(model[ENTITY], origin, angles);
 
     ArrayPushArray(models, model);
   }
@@ -244,7 +391,7 @@ public model_create(model_num, skin)
 }
 
 
-public model_place_on_crosshair(id, model)
+public model_place_on_crosshair(id, placed_num)
 {
   new Float:start[3];
   new Float:view_ofs[3];
@@ -275,33 +422,46 @@ public model_place_on_crosshair(id, model)
   new Float:normal[3];
   traceresult(TR_PlaneNormal, normal);
 
-  normal[0] *= -1.0;
-  normal[1] *= -1.0;
-  normal[2] *= -1.0;
+  // normal[0] *= -1.0;
+  // normal[1] *= -1.0;
+  // normal[2] *= -1.0;
 
-  end[0] += normal[0] * -15.0;
-  end[1] += normal[1] * -15.0;
-  end[2] += normal[2] * -15.0;
+  // end[0] += normal[0] * -15.0;
+  // end[1] += normal[1] * -15.0;
+  // end[2] += normal[2] * -15.0;
   
   vector_to_angle(normal, angles);
 
-  model_move(model, end, angles);
+  new model[Model];
+
+  ArrayGetArray(models, placed_num, model);
+
+  model[ORIGIN][0] = end[0];
+  model[ORIGIN][1] = end[1];
+  model[ORIGIN][2] = end[2];
+
+  model[ANGLES][0] = angles[0];
+  model[ANGLES][1] = angles[1];
+  model[ANGLES][2] = angles[2];
+
+  entity_move(model[ENTITY], end, angles);
+  ArraySetArray(models, placed_num, model);
 
   return PLUGIN_CONTINUE;
 }
 
 
-public model_move(model, Float:origin[3], Float:angles[3])
+public entity_move(entity, Float:origin[3], Float:angles[3])
 {
-  if (!is_valid_ent(model))
+  if (!is_valid_ent(entity))
   {
     return;
   }
 
-  entity_set_origin(model, origin);
-  entity_set_vector(model, EV_VEC_angles, angles);
+  entity_set_origin(entity, origin);
+  entity_set_vector(entity, EV_VEC_angles, angles);
 
-  client_print_color(0, print_team_default, "%s Placed model #%d ^4successfully^1.", CHAT_PREFIX, model);
-  client_print_color(0, print_team_red,     "%s  ORIGIN: [^3%0.1f^1, ^3%0.1f^1, ^3%0.1f^1]", CHAT_PREFIX, origin[0], origin[1], origin[2]);
-  client_print_color(0, print_team_blue,    "%s  ANGLES: [^3%0.1f^1, ^3%0.1f^1, ^3%0.1f^1]", CHAT_PREFIX, angles[0], angles[1], angles[2]);
+  // client_print_color(0, print_team_default, "%s Placed entity #%d ^4successfully^1.", CHAT_PREFIX, model);
+  // client_print_color(0, print_team_red,     "%s  ORIGIN: [^3%0.1f^1, ^3%0.1f^1, ^3%0.1f^1]", CHAT_PREFIX, origin[0], origin[1], origin[2]);
+  // client_print_color(0, print_team_blue,    "%s  ANGLES: [^3%0.1f^1, ^3%0.1f^1, ^3%0.1f^1]", CHAT_PREFIX, angles[0], angles[1], angles[2]);
 }

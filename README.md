@@ -15,6 +15,7 @@ Plugins made for [Counter Strike 1.6](https://store.steampowered.com/app/10/Coun
 * [EnhancedParachuteLite](#EnhancedParachuteLite) 
 * [EntitiesUtils](#EntitiesUtils) 
 * [MaxSpeed](#MaxSpeed) 
+* [PlaceModels](#PlaceModels) 
 * [QueryCvar](#QueryCvar) 
 * [TeamUtils](#TeamUtils) 
 
@@ -166,6 +167,16 @@ Anti-acceleration abuse plugin, limits the maximum speed or even acceleration in
 | amx_maxspeed_usespeed | "400" | \<0-2000\> Maximum speed holding +use, usually applied for parachute |
 | amx_maxspeed_debug | "0" | \<0/1\> Enables "say /speed" command |
 | amx_maxspeed_noaccel | "0" | \<0-15\> Bitsum: 1-Airstrafe noaccel, 2-Swim noaccel, 4-Surf noaccel, 8-Use noaccel |
+
+### [PlaceModels](./lonewolf-PlaceModels.sma)
+
+#### WORK IN PROGRESS!
+
+In-map configurable static models placer, focused on simplicity to set origin and angle, configurable model list and skins. Still in alpha and do not save placed models or distinguish mapnames.
+
+| Command | Description |
+| --- | --- |
+| say /place | Opens PlaceModels menu |
 
 ### [QueryCvar](./lonewolf-QueryCvar.sma)
 
