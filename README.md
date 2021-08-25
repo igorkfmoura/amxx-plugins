@@ -91,7 +91,8 @@ Demo recorder plugin with timestamp, server name, ip, mapname that footprints al
 
 Enhancements:
 * Configurable parameters on filename: clan prefix, timestamp, steamid, nickname and mapname;
-* Records on demo all status from server: now demo
+* Report server and players info on client's console on demo start, including server's hostname, IP address, mapname, timestamp and a list of players in server with nickname and steamid;
+* Auto stopping demo recording on map change;
 
 | Command | Usage |
 | --- | --- |
@@ -109,6 +110,7 @@ Enhancements:
 | amx_demo_notify | "1" | Print demo info on chat on record start |
 | amx_demo_name | "EnhancedAutoDemo" | Base prefix for demo filename |
 | amx_demo_prefix | "EnhancedAutoDemo" | Chat prefix |
+| amx_demo_autostop | "1" | Automatically stop demo on map end |
 
 ### [EnhancedMultiJump](./lonewolf-EnhancedMultiJump.sma)
 

@@ -10,7 +10,7 @@
 #include <cstrike>
 
 #define PLUGIN  "EnhancedAutoDemo"
-#define VERSION "0.4.1"
+#define VERSION "0.5"
 #define AUTHOR  "lonewolf"
 
 #if !defined MAX_MAPNAME_LENGTH
@@ -38,7 +38,8 @@ enum Cvars
   MAPNAME,
   STEAMID,
   NICKNAME,
-  NOTIFY
+  NOTIFY,
+  AUTOSTOP
 };
 new cvars[Cvars];
 
@@ -56,12 +57,13 @@ public plugin_init()
 {
   register_plugin(PLUGIN, VERSION, AUTHOR)
   
-  cvars[AUTO]      = create_cvar("amx_demo_auto",   "1", _, "Record demo on client connect");  
-  cvars[TIMESTAMP] = create_cvar("amx_demo_time",   "0", _, "Append timestamp on demo filename");
-  cvars[MAPNAME]   = create_cvar("amx_demo_map",    "0", _, "Append mapname on demo filename");
-  cvars[STEAMID]   = create_cvar("amx_demo_steam",  "0", _, "Append steamid on demo filename");
-  cvars[NICKNAME]  = create_cvar("amx_demo_nick",   "0", _, "Append nickname on demo filename");
-  cvars[NOTIFY]    = create_cvar("amx_demo_notify", "1", _, "Notify user when recording");
+  cvars[AUTO]      = create_cvar("amx_demo_auto",     "1", _, "Record demo on client connect");  
+  cvars[TIMESTAMP] = create_cvar("amx_demo_time",     "0", _, "Append timestamp on demo filename");
+  cvars[MAPNAME]   = create_cvar("amx_demo_map",      "0", _, "Append mapname on demo filename");
+  cvars[STEAMID]   = create_cvar("amx_demo_steam",    "0", _, "Append steamid on demo filename");
+  cvars[NICKNAME]  = create_cvar("amx_demo_nick",     "0", _, "Append nickname on demo filename");
+  cvars[NOTIFY]    = create_cvar("amx_demo_notify",   "1", _, "Notify user when recording");
+  cvars[AUTOSTOP]  = create_cvar("amx_demo_autostop", "1", _, "Automatically stop demo on map end");
   
   cvars[DEMO_PREFIX] = create_cvar("amx_demo_name",   "EnhancedAutoDemo", _, "Base prefix for demo filename");
   cvars[CHAT_PREFIX] = create_cvar("amx_demo_prefix", "EnhancedAutoDemo", _, "Chat prefix");
@@ -75,6 +77,8 @@ public plugin_init()
   register_clcmd("amx_demo",     "cmd_demo",     ADMIN_PERMISSION, usages[0]);
   register_clcmd("amx_demoall",  "cmd_demoall",  ADMIN_PERMISSION, "Record demo of all players");
   register_clcmd("amx_demomenu", "cmd_demomenu", ADMIN_PERMISSION, "Open demo record menu");
+
+  register_message(SVC_INTERMISSION, "event_intermission");
 }
 
 
@@ -104,10 +108,20 @@ public client_disconnected(id)
 
 public client_putinserver(id)
 {
-	if(is_user_connected(id) && get_pcvar_num(cvars[AUTO])) 
-	{
-		set_task(5.0, "task_start_demo", 1612 + id);
-	}
+  if (!is_user_connected(id)) 
+  {
+    return;
+  }
+  
+  if (get_pcvar_num(cvars[AUTOSTOP]))
+  {
+    client_cmd(id, "stop");
+  }
+
+  if (get_pcvar_num(cvars[AUTO]))
+  {
+    set_task(5.0, "task_start_demo", 1612 + id);
+  }
 }
 
 
@@ -385,6 +399,20 @@ public delayed_print(filename[], id)
     client_print_color(id, id, "^4[%s]^1 Host IP: ^3%s", prefix, ip);
     client_print_color(id, id, "^4[%s]^1 Map: ^3%s", prefix, mapname);
     client_print_color(id, id, "^4[%s]^1 Timestamp: ^3%s", prefix, timestamp);
+  }
+}
+
+
+public event_intermission()
+{
+  if(!get_pcvar_num(cvars[AUTOSTOP]))
+  {
+    return;
+  }
+
+  for (new id = 1; id < MaxClients; ++id)
+  {
+    client_cmd(id, "stop");
   }
 }
 
