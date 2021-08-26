@@ -16,7 +16,8 @@ Plugins made for [Counter Strike 1.6](https://store.steampowered.com/app/10/Coun
 * [EntitiesUtils](#EntitiesUtils) 
 * [MaxSpeed](#MaxSpeed) 
 * [PlaceModels](#PlaceModels) 
-* [QueryCvar](#QueryCvar) 
+* [QueryCvar](#QueryCvar)
+* [ReEnhancedFlashBang](#ReEnhancedFlashBang)
 * [TeamUtils](#TeamUtils) 
 
 ### [AdvancedObserver](./lonewolf-AdvancedObserver.sma)
@@ -187,6 +188,16 @@ Admin command to query an user's config by id, user steam or nickname.
 | Command | Usage |
 | --- | --- |
 |query | query \<0 or id or name or authid\> \<cvar\> |
+
+### [ReEnhancedFlashBang](./lonewolf-ReEnhancedFlashBang.sma)
+
+Initially created to fix an old bug on the flashbang's blinding logic that if a player has been totally blinded, but the flash hasn't fully faded, any other flashbang will totally blind him, even if it explodes behind his back. It also implements options to not blind teammates, totally or partially, or the player itself.
+
+| Cvar | Default | Description |
+| --- | --- | --- |
+| amx_flash_fix | "1" | Fixes flashbang's blinding logic when turned around.<br/>`0` Disabled<br/>`1` Enabled |
+| amx_flash_team | "0" | Allow team flashing.<br/>`0` Don't flash teammates;<br/>`1` Always flash teammates;<br/>`2` Only flash teammates if `mp_friendlyfire` is enabled;<br/>`3` Partially blind teammates" |
+| amx_flash_self | "1" | When set the flashbang will blind its owner.<br/>`0` Disabled<br/>`1` Enabled|
 
 ### [TeamUtils](./lonewolf-TeamUtils.sma)
 
