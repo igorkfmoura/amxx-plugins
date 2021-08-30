@@ -180,6 +180,7 @@ In-map configurable static models placer, focused on simplicity to set origin an
 | Command | Description |
 | --- | --- |
 | say /place | Opens PlaceModels menu |
+| say /models | Toggle rendering of placed models, player based |
 
 ### [QueryCvar](./lonewolf-QueryCvar.sma)
 
@@ -197,7 +198,7 @@ Initially created to fix an old bug on the flashbang's blinding logic that if a 
 | --- | --- | --- |
 | amx_flash_fix | "1" | Fixes flashbang's blinding logic when turned around.<br/>`0` Disabled<br/>`1` Enabled |
 | amx_flash_team | "0" | Allow team flashing.<br/>`0` Don't flash teammates;<br/>`1` Always flash teammates;<br/>`2` Only flash teammates if `mp_friendlyfire` is enabled;<br/>`3` Partially blind teammates" |
-| amx_flash_self | "1" | When set the flashbang will blind its owner.<br/>`0` Disabled<br/>`1` Enabled|
+| amx_flash_self | "1" | When set the flashbang will blind its owner.<br/>`0` Disabled<br/>`1` Enabled |
 
 ### [TeamUtils](./lonewolf-TeamUtils.sma)
 

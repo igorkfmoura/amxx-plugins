@@ -1,12 +1,14 @@
 #include <amxmodx>
 #include <amxmisc>
 #include <engine>
+#include <fakemeta>
 #include <json>
 
 #define PLUGIN  "PlaceModels"
-#define VERSION "0.0.4"
+#define VERSION "0.0.5"
 #define AUTHOR  "lonewolf"
 
+new const PLACEDMODELID = 1337;
 new const CHAT_PREFIX[] = "^4[PlaceModels]^1"
 // new const MODEL_PATH[] = "models/bannertest.mdl";
 new JSON_FILE[96] = "PlaceModels.json";
@@ -31,6 +33,8 @@ enum _:Precache
 
 new Array:models;
 new Array:models_precached;
+
+new users_that_disabled_models;
 
 public plugin_end()
 {
@@ -104,9 +108,42 @@ public plugin_init()
   
   models_load_json();
 
-  register_clcmd("say /place", "cmd_place");
+  register_forward(FM_AddToFullPack, "fwd_addtofullpack");
+
+  register_clcmd("say /place", "cmd_place", ADMIN_CVAR);
+  register_clcmd("say /models", "cmd_models");
 }
 
+public client_disconnected(id)
+{
+  users_that_disabled_models &= (1 << (id-1));
+}
+
+public cmd_models(id)
+{
+  if (!is_user_connected(id))
+  {
+    return PLUGIN_HANDLED;
+  }
+
+  users_that_disabled_models ^= (1 << (id-1));
+
+  new const text[2][16] = {"^4enabled^1", "^3disabled^1"};
+  client_print_color(id, print_team_red, "%s You have %s placed models.", CHAT_PREFIX, text[users_that_disabled_models & (1 << (id-1))])
+
+  return PLUGIN_HANDLED;
+}
+
+public fwd_addtofullpack(es_handle, e, ent, host, hostflags, player, set){
+  
+  if (!player && (users_that_disabled_models & (1 << (host-1))) && entity_get_int(ent, EV_INT_iuser1) == PLACEDMODELID)
+  {
+    forward_return(0);
+    return FMRES_SUPERCEDE;
+  }
+
+  return FMRES_IGNORED;
+}
 
 public cmd_place(id)
 {
@@ -117,7 +154,7 @@ public cmd_place(id)
 
   if (!(get_user_flags(id) & ADMIN_CVAR))
   {
-    client_print_color(id, print_team_red, "%s ^4/place^1 command is exclusive to ^3admins^1.");
+    client_print_color(id, print_team_red, "%s ^4/place^1 command is exclusive to ^3admins^1.", CHAT_PREFIX);
     return PLUGIN_HANDLED;
   }
 
@@ -384,6 +421,7 @@ public model_create(model_num, skin)
   entity_set_string(model, EV_SZ_classname, "placedmodel");
   entity_set_model(model, precached[PATH]);
   entity_set_int(model, EV_INT_skin, skin);
+  entity_set_int(model, EV_INT_iuser1, PLACEDMODELID);
 
   server_print("[%s] Created model '%s' with skin %d [%d].", PLUGIN, precached[PATH], skin, model);
 
