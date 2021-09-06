@@ -5,13 +5,21 @@
 #include <json>
 
 #define PLUGIN  "PlaceModels"
-#define VERSION "0.0.5"
+#define VERSION "0.0.6"
 #define AUTHOR  "lonewolf"
+
+#if !defined MAX_MAPNAME_LENGTH
+#define MAX_MAPNAME_LENGTH 64
+#endif
+
+new mapname[MAX_MAPNAME_LENGTH];
 
 new const PLACEDMODELID = 1337;
 new const CHAT_PREFIX[] = "^4[PlaceModels]^1"
 // new const MODEL_PATH[] = "models/bannertest.mdl";
-new JSON_FILE[96] = "PlaceModels.json";
+new JSON_DIR[32] = "placemodels";
+new JSON_PREFIX[32] = "placemodels-";
+new JSON_FILE[128];
 new CONFIG_PATH[64];
 
 new JSON:root;
@@ -48,8 +56,10 @@ public plugin_precache()
   models = ArrayCreate(Model);
   models_precached = ArrayCreate(Precache);
 
+  get_mapname(mapname, charsmax(mapname));
   get_configsdir(CONFIG_PATH, charsmax(CONFIG_PATH));
-  format(JSON_FILE, charsmax(JSON_FILE), "%s/%s", CONFIG_PATH, JSON_FILE);
+
+  format(JSON_FILE, charsmax(JSON_FILE), "%s/%s/%s%s.json", CONFIG_PATH, JSON_DIR, JSON_PREFIX, mapname);
 
   root = json_parse(JSON_FILE, .is_file=true, .with_comments=true);
 
@@ -98,7 +108,7 @@ public plugin_precache()
   }
   
   json_free(tmp);
-  json_free(models_to_precache)
+  json_free(models_to_precache);
 }
 
 
@@ -114,10 +124,12 @@ public plugin_init()
   register_clcmd("say /models", "cmd_models");
 }
 
+
 public client_disconnected(id)
 {
   users_that_disabled_models &= (1 << (id-1));
 }
+
 
 public cmd_models(id)
 {
@@ -134,6 +146,7 @@ public cmd_models(id)
   return PLUGIN_HANDLED;
 }
 
+
 public fwd_addtofullpack(es_handle, e, ent, host, hostflags, player, set){
   
   if (!player && (users_that_disabled_models & (1 << (host-1))) && entity_get_int(ent, EV_INT_iuser1) == PLACEDMODELID)
@@ -144,6 +157,7 @@ public fwd_addtofullpack(es_handle, e, ent, host, hostflags, player, set){
 
   return FMRES_IGNORED;
 }
+
 
 public cmd_place(id)
 {
@@ -167,6 +181,9 @@ public cmd_place(id)
 stock menu_place(id, page=0)
 {
   new menu = menu_create("Menu PlaceModels", "menu_place_handler");
+
+  menu_additem(menu, "\dSave", "save", ADMIN_CVAR);
+  menu_addblank2(menu);
 
   new count = ArraySize(models);
   for (new i = 0; i < count; ++i)
@@ -195,7 +212,7 @@ public menu_place_handler(id, menu, item)
     return PLUGIN_HANDLED;
   }
 
-  new info[4];
+  new info[16];
   menu_item_getinfo(menu, item, _, info, charsmax(info));
 
   if (equal(info, "new"))
@@ -219,8 +236,13 @@ public menu_place_handler(id, menu, item)
     menu_place(id);
     return PLUGIN_CONTINUE;
   }
+  else if (equal(info, "save"))
+  {
+    client_print_color(id, id, "%s Saving not implemented yet.", CHAT_PREFIX);
+    return PLUGIN_CONTINUE;
+  }
 
-  menu_destroy(menu);
+  item -= 2;
 
   new count = ArraySize(models);
   if (item >= count)
@@ -485,6 +507,7 @@ public model_place_on_crosshair(id, placed_num)
   entity_move(model[ENTITY], end, angles);
   ArraySetArray(models, placed_num, model);
 
+  client_print(id, print_console, "origin: [%.1f, %.1f, %.1f], angles: [%.1f, %.1f, %.1f]", end[0], end[1], end[2], angles[0], angles[1], angles[2]);
   return PLUGIN_CONTINUE;
 }
 
