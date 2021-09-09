@@ -10,7 +10,7 @@
 #include <cstrike>
 
 #define PLUGIN  "EnhancedAutoDemo"
-#define VERSION "0.5"
+#define VERSION "0.5.1"
 #define AUTHOR  "lonewolf"
 
 #if !defined MAX_MAPNAME_LENGTH
@@ -74,13 +74,33 @@ public plugin_init()
 
   menu_demomenu_callback_id = menu_makecallback("menu_demomenu_callback");
 
-  register_clcmd("amx_demo",     "cmd_demo",     ADMIN_PERMISSION, usages[0]);
-  register_clcmd("amx_demoall",  "cmd_demoall",  ADMIN_PERMISSION, "Record demo of all players");
-  register_clcmd("amx_demomenu", "cmd_demomenu", ADMIN_PERMISSION, "Open demo record menu");
+  register_concmd("amx_demo",     "cmd_demo",     ADMIN_PERMISSION, usages[0]);
+  register_concmd("amx_demoall",  "cmd_demoall",  ADMIN_PERMISSION, "Record demo of all players");
+  register_concmd("amx_stopall",  "cmd_stopall",  ADMIN_PERMISSION, "Stop demo record of all players");
+
+  register_clcmd("amx_demomenu", "cmd_demomenu", ADMIN_PERMISSION, "Open demo record menu");  
 
   register_message(SVC_INTERMISSION, "event_intermission");
 }
 
+
+public cmd_stopall(admin)
+{
+  // if (!is_user_connected(admin))
+  // {
+  //   return PLUGIN_HANDLED;
+  // }
+
+  for (new id = 1; id <= MaxClients; ++id)
+  {
+    if (is_user_connected(id))
+    {
+      client_cmd(id, "stop");
+    }
+  }
+
+  return PLUGIN_HANDLED;
+}
 
 public client_authorized(id)
 {
@@ -147,10 +167,10 @@ public print_usage(id)
 
 public cmd_demo(admin)
 {
-  if (!is_user_connected(admin))
-  {
-    return PLUGIN_HANDLED;
-  }
+  // if (!is_user_connected(admin))
+  // {
+  //   return PLUGIN_HANDLED;
+  // }
 
   new argc = read_argc();
   if (argc < 2)
@@ -196,7 +216,7 @@ public cmd_demo(admin)
   {
     start_demo(id);
   }
-  else
+  else if (is_user_connected(admin))
   {
     client_print(admin, print_console, "^n[%s] Player not found!", PLUGIN);
     print_usage(admin);
@@ -208,10 +228,10 @@ public cmd_demo(admin)
 
 public cmd_demoall(admin)
 {
-  if (!is_user_connected(admin))
-  {
-    return PLUGIN_HANDLED;
-  }
+  // if (!is_user_connected(admin))
+  // {
+  //   return PLUGIN_HANDLED;
+  // }
 
   for (new id = 1; id <= MaxClients; ++id)
   {
@@ -400,6 +420,19 @@ public delayed_print(filename[], id)
     client_print_color(id, id, "^4[%s]^1 Map: ^3%s", prefix, mapname);
     client_print_color(id, id, "^4[%s]^1 Timestamp: ^3%s", prefix, timestamp);
   }
+
+  // set_task(1.0, "snapshot_delayed", id + 9785+33)
+}
+
+
+public snapshot_delayed(id)
+{
+  id -= (9785+33);
+
+  if (is_user_connected(id))
+  {
+    client_cmd(id, "snapshot");
+  }
 }
 
 
@@ -412,7 +445,10 @@ public event_intermission()
 
   for (new id = 1; id < MaxClients; ++id)
   {
-    client_cmd(id, "stop");
+    if (is_user_connected(id))
+    {
+      client_cmd(id, "stop");
+    }
   }
 }
 
