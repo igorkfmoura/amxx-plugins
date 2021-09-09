@@ -10,7 +10,7 @@
 #include <xs>
 
 #define MOD_TITLE   "AdvancedObserver"
-#define MOD_VERSION "0.6.2"
+#define MOD_VERSION "0.6.3"
 #define MOD_AUTHOR  "lonewolf"
 
 #define PREFIX "^4[AdvancedObserver]^1"
@@ -24,8 +24,8 @@
   #define DEBUG(%1) do_nothing(%1)
 #endif /* DEBUG_ENABLED == true */
 
-#define USER_ENABLED(%1)           (camera_enabled_bits & (1 << (%1)-1))
-#define IS_CAMERA_GRENADE_SET(%1)  (camera_grenade_bits & (1 << (%1)-1))
+#define USER_ENABLED(%1)           (camera_enabled_bits & (1 << ((%1) - 1)))
+#define IS_CAMERA_GRENADE_SET(%1)  (camera_grenade_bits & (1 << ((%1) - 1)))
 #define IS_THIS_GRENADE_C4(%1)     (get_ent_data((%1), "CGrenade", "m_bIsC4"))
 #define IS_THIS_A_POPPED_SMOKE(%1) (get_ent_data((%1), "CGrenade", "m_SGSmoke"))
 
@@ -141,7 +141,7 @@ public plugin_init()
   // register_event("ScreenFade", "event_flashed", "b", "7=255");
   register_message(MSG_ID_SCREENFADE, "msg_ScreenFade");
   
-  RegisterHam(Ham_Spawn,  "player",  "event_player_spawned", .Post = true);
+  // RegisterHam(Ham_Spawn,  "player",  "event_player_spawned", .Post = true);
   RegisterHam(Ham_Killed, "player",  "event_player_killed",  .Post = true);
   RegisterHam(Ham_Think,  "grenade", "think_grenade"); 
 
@@ -1001,7 +1001,7 @@ public camera_move_to_eyes(id)
 // Thanks to "Numb / ConnorMcLeod | Wilian M." for "CS Revo: No Flash Team" code
 public think_grenade(grenade)
 {
-  if (!camera_grenade_bits || !camera_enabled_bits || IS_THIS_GRENADE_C4(grenade) || IS_THIS_A_POPPED_SMOKE(grenade))
+  if (!camera_grenade_bits || !camera_enabled_bits || !is_valid_ent(grenade) || IS_THIS_GRENADE_C4(grenade) || IS_THIS_A_POPPED_SMOKE(grenade))
   {
     return HAM_IGNORED;
   }
@@ -1129,21 +1129,38 @@ public task_find_flag_holders(task_id) // jctf_base.sma
   
   while ((ent = find_ent_by_class(ent, FLAG_CLASSNAME)) != 0)
   {
-    new CsTeams:team = CsTeams:entity_get_int(ent, EV_INT_body);
-    
-    if (team == CS_TEAM_T || team == CS_TEAM_CT)
+    new body = entity_get_int(ent, EV_INT_body);
+    if (body == 0) // FlagBase
     {
-      // DEBUG(1, print_chat, "task_find_flag_holders -> ent = %d, team = %d", ent, team);
-      entities_flag[team] = ent;
+      continue;
+    }
+    
+    new skin = entity_get_int(ent, EV_INT_skin);
+    if (skin & 0x01)
+    {
+      entities_flag[CS_TEAM_T] = ent;
       flags_found++;
     }
+    else if ((skin != 0) && ~(skin & 0x01))
+    {
+      entities_flag[CS_TEAM_CT] = ent;
+      flags_found++;
+    }
+    // new CsTeams:team = CsTeams:entity_get_int(ent, EV_INT_skin);
+    
+    // if (team == CS_TEAM_T || team == CS_TEAM_CT)
+    // {
+    //   // DEBUG(1, print_chat, "task_find_flag_holders -> ent = %d, team = %d", ent, team);
+    //   entities_flag[team] = ent;
+    //   flags_found++;
+    // }
   }
   
   // DEBUG(1, print_chat, "task_find_flag_holders -> flags_found == %d", flags_found);
     
   if (flags_found != 2)
   {
-    set_task(2.0, "task_find_flag_holders", task_id);
+    set_task(5.0, "task_find_flag_holders", task_id);
   }
 
   set_task(0.5, "task_check_spec_aiming", task_id+1, .flags = "b");
@@ -1398,13 +1415,13 @@ public camera_chase_unset(id)
 }
 
 
-public event_player_spawned(id)
-{
-  if (is_user_connected(id) && USER_ENABLED(id))
-  {
-    observer_set_mode(id, OBS_IN_EYE);
-  }
-}
+// public event_player_spawned(id)
+// {
+//   if (is_user_connected(id) && USER_ENABLED(id))
+//   {
+//     observer_set_mode(id, OBS_IN_EYE);
+//   }
+// }
 
 
 public event_player_joined_team()
@@ -1606,7 +1623,7 @@ public set_observer_crosshair(id, mode)
 // https://forums.alliedmods.net/showthread.php?t=238359&page=2
 public event_player_killed(victim, killer)
 { 
-  if (!camera_enabled_bits || !is_user_connected(victim) || !is_user_alive(killer))
+  if (!camera_enabled_bits || !is_user_connected(victim) || !is_user_connected(killer) || !is_user_alive(killer))
   {
     return HAM_IGNORED;
   }
@@ -1639,33 +1656,33 @@ public event_player_killed(victim, killer)
 
 
 // Spectator won't be fully blinded for quality of life reasons
-public event_flashed(id)
-{
-  if (!is_user_connected(id) || is_user_alive(id) || !USER_ENABLED(id))
-  {
-    return PLUGIN_CONTINUE;
-  }
+// public event_flashed(id)
+// {
+//   if (!is_user_connected(id) || is_user_alive(id) || !USER_ENABLED(id))
+//   {
+//     return PLUGIN_CONTINUE;
+//   }
   
-  new duration  = read_data(1);
-  new hold_time = read_data(2);
+//   new duration  = read_data(1);
+//   new hold_time = read_data(2);
   
-  message_begin(MSG_ONE_UNRELIABLE, MSG_ID_SCREENFADE, _, id);
-  write_short(duration);
-  write_short(hold_time);
-  write_short(read_data(3));
-  write_byte(read_data(4));
-  write_byte(read_data(5));
-  write_byte(read_data(6));
-  write_byte(180);
-  message_end();
+//   message_begin(MSG_ONE_UNRELIABLE, MSG_ID_SCREENFADE, _, id);
+//   write_short(duration);
+//   write_short(hold_time);
+//   write_short(read_data(3));
+//   write_byte(read_data(4));
+//   write_byte(read_data(5));
+//   write_byte(read_data(6));
+//   write_byte(180);
+//   message_end();
 
-  new Float:tmp = duration / 4096.0 / 3.0;
+//   new Float:tmp = duration / 4096.0 / 3.0;
   
-  set_hudmessage(200, 50, 0, -1.0, -1.0, 1, tmp, tmp, 0.1, 0.1, -1);
-  ShowSyncHudMsg(id, hudsync1, "[FLASHED]");
+//   set_hudmessage(200, 50, 0, -1.0, -1.0, 1, tmp, tmp, 0.1, 0.1, -1);
+//   ShowSyncHudMsg(id, hudsync1, "[FLASHED]");
   
-  return PLUGIN_HANDLED;
-}
+//   return PLUGIN_HANDLED;
+// }
 
 public msg_ScreenFade(msgid, msgdest, msgent)
 {
