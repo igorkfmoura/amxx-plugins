@@ -5,7 +5,7 @@
 #include <json>
 
 #define PLUGIN  "PlaceModels"
-#define VERSION "0.0.6"
+#define VERSION "0.0.6.1"
 #define AUTHOR  "lonewolf"
 
 #if !defined MAX_MAPNAME_LENGTH
@@ -140,8 +140,8 @@ public cmd_models(id)
 
   users_that_disabled_models ^= (1 << (id-1));
 
-  new const text[2][16] = {"^4enabled^1", "^3disabled^1"};
-  client_print_color(id, print_team_red, "%s You have %s placed models.", CHAT_PREFIX, text[users_that_disabled_models & (1 << (id-1))])
+  new const text[2][16] = {"^3disabled^1", "^4enabled^1"};
+  client_print_color(id, print_team_red, "%s You have %s placed models.", CHAT_PREFIX, text[(users_that_disabled_models & (1 << (id-1))) == 0])
 
   return PLUGIN_HANDLED;
 }
@@ -234,6 +234,7 @@ public menu_place_handler(id, menu, item)
 
     menu_destroy(menu);
     menu_place(id);
+
     return PLUGIN_CONTINUE;
   }
   else if (equal(info, "save"))
@@ -342,13 +343,13 @@ public menu_place_edit_handler(id, menu, item)
   {
     model_place_on_crosshair(id, n);
   }
-  else if (item == 3)
-  {
-    if (!task_exists(id + 13561))
-    {
-      set_task(0.3, "glow_test", model[ENTITY] + 13561, _, _, "b");
-    }
-  }
+  // else if (item == 3)
+  // {
+  //   if (!task_exists(id + 13561))
+  //   {
+  //     set_task(0.3, "glow_test", model[ENTITY] + 13561, _, _, "b");
+  //   }
+  // }
 
   ArraySetArray(models, n, model);
 
@@ -359,23 +360,23 @@ public menu_place_edit_handler(id, menu, item)
 }
 
 
-public glow_test(id)
-{
-  id -= 13561;
-  static color = 0xFF;
+// public glow_test(id)
+// {
+//   id -= 13561;
+//   static color = 0xFF;
 
-  new r = ((color & 0xFF    ) >> (0*8)) & 0xFF;
-  new g = ((color & 0xFFFF  ) >> (1*8)) & 0xFF;
-  new b = ((color & 0xFFFFFF) >> (2*8)) & 0xFF;
+//   new r = ((color & 0xFF    ) >> (0*8)) & 0xFF;
+//   new g = ((color & 0xFFFF  ) >> (1*8)) & 0xFF;
+//   new b = ((color & 0xFFFFFF) >> (2*8)) & 0xFF;
   
-  client_print(0, print_chat, "color: %d, r: %d, g: %d, b: %d", color, r, g, b);
+//   client_print(0, print_chat, "color: %d, r: %d, g: %d, b: %d", color, r, g, b);
 
-  set_ent_rendering(id, kRenderFxGlowShell, r, g, b, _, 255);
+//   set_ent_rendering(id, kRenderFxGlowShell, r, g, b, _, 255);
 
-  color <<= 1;
-  color = (color | (color >> (3*8))) & 0xFFFFFF;
+//   color <<= 1;
+//   color = (color | (color >> (3*8))) & 0xFFFFFF;
 
-}
+// }
 
 public models_load_json()
 {
@@ -507,7 +508,9 @@ public model_place_on_crosshair(id, placed_num)
   entity_move(model[ENTITY], end, angles);
   ArraySetArray(models, placed_num, model);
 
-  client_print(id, print_console, "origin: [%.1f, %.1f, %.1f], angles: [%.1f, %.1f, %.1f]", end[0], end[1], end[2], angles[0], angles[1], angles[2]);
+  client_print(id, print_console, "^"origin^": [%.1f, %.1f, %.1f],", end[0], end[1], end[2]);
+  client_print(id, print_console, "^"angles^": [%.1f, %.1f, %.1f]", angles[0], angles[1], angles[2]);
+  
   return PLUGIN_CONTINUE;
 }
 
