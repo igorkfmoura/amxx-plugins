@@ -35,7 +35,7 @@ public cmd_speed(id)
 
 public client_PostThink(id)
 { 
-  if (!enabled[id])
+  if (!enabled[id] || !is_user_connected(id))
   {
     return PLUGIN_CONTINUE;
   }
@@ -46,7 +46,7 @@ public client_PostThink(id)
   entity_get_vector(id, EV_VEC_velocity, velocity);
   speed = xs_vec_len_2d(velocity);
   
-  client_print(id, print_center, "[%.3f]", speed);
+  client_print(id, print_center, "[%.3f, %.3f]", speed, velocity[2]);
   
   return PLUGIN_CONTINUE;
 }
