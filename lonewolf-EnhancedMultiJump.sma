@@ -11,7 +11,7 @@
 #include <xs>
 
 #define PLUGIN  "EnhancedMultiJump"
-#define VERSION "0.6"
+#define VERSION "0.6.1"
 #define AUTHOR  "lonewolf"
 
 // https://github.com/s1lentq/ReGameDLL_CS/blob/f57d28fe721ea4d57d10c010d15d45f05f2f5bad/regamedll/pm_shared/pm_shared.cpp#L2477
@@ -29,17 +29,18 @@ new Float:fuser2[MAX_PLAYERS+1];
 
 new airjumps[MAX_PLAYERS+1];
 
-new pcvar_maxjumps;
-new pcvar_airjumplikebhop;
+new maxjumps;
+new airjumplikebhop;
+new Float:sv_gravity;
 
 public plugin_init()
 {
   register_plugin(PLUGIN, VERSION, AUTHOR)
   
-  pcvar_maxjumps = create_cvar("amx_maxjumps", "1", _, "<int> maximum number of airjumps");
-  pcvar_airjumplikebhop = create_cvar("amx_airjumplikebhop", "1", _, "<int> Treat jump horizontal speed like bhop");
-  
-  new maxjumps = get_pcvar_num(pcvar_maxjumps);
+  bind_pcvar_num(create_cvar("amx_maxjumps", "1", _, "<int> maximum number of airjumps"), maxjumps);
+  bind_pcvar_num(create_cvar("amx_airjumplikebhop", "1", _, "<bool> Treat jump horizontal speed as bhop"), airjumplikebhop);
+  bind_pcvar_float(get_cvar_pointer("sv_gravity"), sv_gravity);
+
   arrayset(airjumps, maxjumps, sizeof(airjumps));
 }
 
@@ -97,7 +98,7 @@ public client_PostThink(id)
   if (get_entity_flags(id) & FL_ONGROUND || on_ladder)
   {
     ready_to_jump[id] = false;
-    airjumps[id]      = get_pcvar_num(pcvar_maxjumps);
+    airjumps[id]      = maxjumps;
     
     return PLUGIN_CONTINUE;
   }
@@ -112,7 +113,7 @@ public client_PostThink(id)
   
   new Float:upspeed = velocity[2];
   
-  if (get_pcvar_num(pcvar_airjumplikebhop))
+  if (airjumplikebhop)
   {
     new Float:speed = xs_sqrt(velocity[0]*velocity[0] + velocity[1]*velocity[1] + 16.0) // simulating upspeed of -4.0 u/s as in a normal bhop
     new Float:maxspeed = entity_get_float(id, EV_FL_maxspeed);
@@ -134,7 +135,7 @@ public client_PostThink(id)
   {
     // torricelli: vf^2 = vo^2 + 2*a*s
     // for jump height: vf = 0;
-    new Float:gravity = get_cvar_float("sv_gravity") * entity_get_float(id, EV_FL_gravity);
+    new Float:gravity = sv_gravity * entity_get_float(id, EV_FL_gravity);
     new Float:gravityinvbytwo = 1.0 / (2.0 * gravity);
 
     new Float:jump_height = (72000.0) * gravityinvbytwo; // 2.0 * 800.0 * 45.0 / (2.0 * gravity)
