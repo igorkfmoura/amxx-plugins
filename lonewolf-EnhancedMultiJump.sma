@@ -11,7 +11,7 @@
 #include <xs>
 
 #define PLUGIN  "EnhancedMultiJump"
-#define VERSION "0.7"
+#define VERSION "0.7.1"
 #define AUTHOR  "lonewolf"
 
 // https://github.com/s1lentq/ReGameDLL_CS/blob/f57d28fe721ea4d57d10c010d15d45f05f2f5bad/regamedll/pm_shared/pm_shared.cpp#L2477
@@ -63,6 +63,7 @@ public on_CBasePlayer_Jump_Post(id)
   new on_ladder = (get_entvar(id, var_movetype) == MOVETYPE_FLY);
   if (get_entvar(id, var_flags) & FL_ONGROUND || on_ladder)
   {
+    fuser2[id] = get_entvar(id, var_fuser2);
     next_jump_time[id] = get_gametime() + JUMP_TIME_WAIT;
 
     return HC_CONTINUE; 
@@ -108,8 +109,6 @@ public on_CBasePlayer_Jump_Post(id)
   }
   else
   {
-    fuser2[id] = get_entvar(id, var_fuser2);
-
     // torricelli: vf^2 = vo^2 + 2*a*s
     // for jump height: vf = 0;
     new Float:gravity = sv_gravity * Float:get_entvar(id, var_gravity);
@@ -126,8 +125,14 @@ public on_CBasePlayer_Jump_Post(id)
     // Second Jump height
     maxheight += jump_height;
     
+    // client_print_color(id, print_team_red, "^3[1] ^4gravity:^1 %.1f, ^4sv_gravity:^1 %.1f, ^4var_gravity:^1 %.1f", gravity, sv_gravity, Float:get_entvar(id, var_gravity));
+    // client_print_color(id, print_team_red, "^3[2] ^4jump_height:^1 %.1f, ^4upspeed_original:^1 %.1f, ^4fuser2:^1 %.1f", jump_height, upspeed_original, fuser2[id]);
+    // client_print_color(id, print_team_red, "^3[3] ^4height_elapsed:^1 %.1f, ^4maxheight:^1 %.1f", height_elapsed, maxheight);
+
     fuser2[id] = 0.0; // for next airjumps
     velocity[2] = xs_sqrt(2.0 * gravity * (maxheight - height_elapsed));
+
+    // client_print_color(id, print_team_red, "^3[4] ^4velocity[2]:^1 %.1f", velocity[2]);
   }
   
   set_entvar(id, var_velocity, velocity);
