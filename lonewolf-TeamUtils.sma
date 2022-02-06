@@ -37,8 +37,8 @@ public plugin_init()
   
   register_logevent("round_start", 2, "0=World triggered", "1=Round_Start");
 
-  register_clcmd("amx_swapteams",    "cmd_swap_teams",    ADMIN_SWAP, "Swap teams and restart game keeping player's score");
-  register_clcmd("amx_shuffleteams", "cmd_shuffle_teams", ADMIN_SWAP, "Shuffle teams and restart game keeping player's score");
+  register_concmd("amx_swapteams",    "cmd_swap_teams",    ADMIN_SWAP, "Swap teams and restart game keeping player's score");
+  register_concmd("amx_shuffleteams", "cmd_shuffle_teams", ADMIN_SWAP, "Shuffle teams and restart game keeping player's score");
 }
 
 
