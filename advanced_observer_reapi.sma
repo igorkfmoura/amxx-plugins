@@ -1,8 +1,9 @@
 #include <amxmodx>
 #include <reapi>
+#include <xs>
 
 #define PLUGIN  "Advanced Observer Reapi"
-#define VERSION "0.1"
+#define VERSION "0.2"
 #define AUTHOR  "lonewolf"
 #define URL     "https://github.com/igorkelvin/amxx-plugins"
 
@@ -12,31 +13,40 @@
 /* todo
 - ~~observer switch to killer;~~
 - fix spec bug on Observer_IsValidTarget
-- fix freelook camera position
+- ~~fix freelook camera position~~
 - fix fadetoblack for specs
 - observer target C4 holder
 - observer target C4 entity if no holder
 - observer grenade camera
 - observer doppelganger, copy inputs from another observer
+- ~~restrict observer modes~~
 */
 
 // Note: beware of non-standard bit position, %2 should be on 1-32 range and 
 //       not in 0-31 to facilitate playerid manipulation
-#define BIT_SET(%1,%2)    ((%1) |=  (1 << ((%2) - 1)))
-#define BIT_CLR(%1,%2)    ((%1) &= ~(1 << ((%2) - 1)))
-#define BIT_XOR(%1,%2)    ((%1) ^=  (1 << ((%2) - 1)))
-#define BIT_IS_SET(%1,%2) ( (%1) & (1 << ((%2) - 1)))
-#define BIT_IS_CLR(%1,%2) (~(%1) & (1 << ((%2) - 1)))
+#define BIT_PL_SET(%1,%2)    ( (%1) |=  (1 << ((%2) - 1)))
+#define BIT_PL_CLR(%1,%2)    ( (%1) &= ~(1 << ((%2) - 1)))
+#define BIT_PL_XOR(%1,%2)    ( (%1) ^=  (1 << ((%2) - 1)))
+#define BIT_PL_IS_SET(%1,%2) ( (%1) &   (1 << ((%2) - 1)))
+#define BIT_PL_IS_CLR(%1,%2) (~(%1) &   (1 << ((%2) - 1)))
+
+#define BIT_SET(%1,%2)    ( (%1) |=  (1 << (%2)))
+#define BIT_CLR(%1,%2)    ( (%1) &= ~(1 << (%2)))
+#define BIT_XOR(%1,%2)    ( (%1) ^=  (1 << (%2)))
+#define BIT_IS_SET(%1,%2) ( (%1) &   (1 << (%2)))
+#define BIT_IS_CLR(%1,%2) (~(%1) &   (1 << (%2)))
 
 enum _:ObserverPreferences
 {
     bool:ENABLED,
+    OBS_MODES
 };
 new preferences_default[ObserverPreferences] = 
 {
-    false
+    false,
+    (1 << OBS_IN_EYE) | (1 << OBS_ROAMING),
 };
-new preferences[MAX_PLAYERS+1][ObserverPreferences];
+new preferences[MAX_PLAYERS + 1][ObserverPreferences];
 
 enum _:ObserverConfigs
 {
@@ -44,27 +54,48 @@ enum _:ObserverConfigs
 }
 new cfg[ObserverConfigs];
 
+enum _:HookChainIds
+{
+    HookChain:KILLED_POST,
+    HookChain:OBS_SETMODE_POST,
+    HookChain:OBS_SETMODE_PRE
+};
+new hooks[HookChainIds];
 
 public plugin_init()
 {
     register_plugin(PLUGIN, VERSION, AUTHOR, URL);
 
-    RegisterHookChain(RG_CBasePlayer_Killed, "CBasePlayer_Killed_Post", true);
+    hooks[KILLED_POST]      = RegisterHookChain(RG_CBasePlayer_Killed, "CBasePlayer_Killed_Post", true);
+    hooks[OBS_SETMODE_PRE]  = RegisterHookChain(RG_CBasePlayer_Observer_SetMode, "CBasePlayer_Observer_SetMode_Pre");
+    hooks[OBS_SETMODE_POST] = RegisterHookChain(RG_CBasePlayer_Observer_SetMode, "CBasePlayer_Observer_SetMode_Post", true);
 
     register_clcmd("say /obs", "cmd_say_obs");
+
+    for (new i = 1; i <= MAX_PLAYERS; ++i)
+    {
+        reset_preferences(i);
+    }
 }
 
 
 public client_disconnected(id)
 {
-    new size = sizeof(preferences_default)
+    reset_preferences(id);
+    BIT_PL_CLR(cfg[ENABLED_BITS], id);
+}
+
+
+public reset_preferences(id)
+{
+    new size = sizeof(preferences_default);
     for (new i = 0; i < size; ++i)
     {
         preferences[id][i] = preferences_default[i];
     }
-
-    BIT_XOR(cfg[ENABLED_BITS], id)
 }
+
+
 public cmd_say_obs(id)
 {
     if (!is_user_connected(id))
@@ -72,10 +103,88 @@ public cmd_say_obs(id)
         return PLUGIN_HANDLED;
     }
 
-    BIT_XOR(cfg[ENABLED_BITS], id);
+    BIT_PL_XOR(cfg[ENABLED_BITS], id);
     client_print_color(id, print_team_red, "%s Advanced Observer is now %s.", PREFIX_CHAT, BIT_IS_SET(cfg[ENABLED_BITS], id) ? "^4enabled^1" : "^3disabled^1");
 
     return PLUGIN_HANDLED;
+}
+
+
+public CBasePlayer_Observer_SetMode_Pre(id, mode)
+{
+    if (!is_user_connected(id) || BIT_PL_IS_CLR(cfg[ENABLED_BITS], id))
+    {
+        return HC_CONTINUE;
+    }
+
+    new _mode = mode;
+    do
+    {
+        if (BIT_IS_SET(preferences[id][OBS_MODES], mode))
+        {
+            break;
+        }
+
+        switch (mode)
+        {
+          case OBS_CHASE_LOCKED: mode = OBS_IN_EYE;
+          case OBS_CHASE_FREE:   mode = OBS_IN_EYE;
+          case OBS_IN_EYE:       mode = OBS_ROAMING;
+          case OBS_ROAMING:      mode = OBS_MAP_FREE;
+          case OBS_MAP_FREE:     mode = OBS_MAP_CHASE;
+          default:               mode = get_member(id, m_bObserverAutoDirector) ? OBS_CHASE_LOCKED : OBS_CHASE_FREE;
+        }
+    } while (_mode != mode)
+
+    if (_mode != mode)
+    {
+        SetHookChainArg(2, ATYPE_INTEGER, mode);
+    }
+
+    return HC_CONTINUE;
+}
+
+
+public CBasePlayer_Observer_SetMode_Post(id, mode)
+{
+    if (!is_user_connected(id) || BIT_PL_IS_CLR(cfg[ENABLED_BITS], id))
+    {
+        return HC_CONTINUE;
+    }
+
+    if (mode != OBS_ROAMING)
+    {
+        return HC_CONTINUE;
+    }
+
+    new target = get_member(id, m_hObserverTarget);
+    if (!is_user_alive(target))
+    {
+        return HC_CONTINUE;
+    }
+
+    new Float:eyes[3];
+    new Float:tmp[3];
+
+    get_entvar(target, var_origin, eyes);
+    get_entvar(target, var_view_ofs, tmp);
+    xs_vec_add(eyes, tmp, eyes);
+    
+    get_entvar(target, var_v_angle, tmp);
+
+    new Float:v_forward[3];
+    angle_vector(tmp, ANGLEVECTOR_FORWARD, v_forward);
+
+    eyes[0] += v_forward[0] * 10;
+    eyes[1] += v_forward[1] * 10;
+    
+    set_entvar(id, var_origin, eyes);
+    set_entvar(id, var_angles, tmp);
+    set_entvar(id, var_v_angle, tmp);
+
+    set_entvar(id, var_fixangle, 1);
+
+    return HC_CONTINUE;
 }
 
 
@@ -88,16 +197,25 @@ public CBasePlayer_Killed_Post(victim, killer)
 
     for (new id = 1; id <= MAX_PLAYERS; ++id)
     {
-        if (BIT_IS_SET(cfg[ENABLED_BITS], id) && is_user_connected(id) && !is_user_alive(id))
+        if (BIT_PL_IS_SET(cfg[ENABLED_BITS], id) && is_user_connected(id) && !is_user_alive(id))
         {
             new iuser2 = get_entvar(id, var_iuser2);
             if (iuser2 == victim)
             {
-                set_entvar(id, var_iuser2, killer);
-                set_member(id, m_hObserverTarget, killer);
+                Observer_SetTarget(id, killer);
             }
         }
     }
     
     return HC_CONTINUE;
+}
+
+
+public Observer_SetTarget(id, target)
+{
+    if (is_user_connected(id))
+    {
+        set_entvar(id, var_iuser2, target);
+        set_member(id, m_hObserverTarget, target);
+    }
 }
