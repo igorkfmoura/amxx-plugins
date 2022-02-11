@@ -9,9 +9,10 @@
 #include <hamsandwich>
 #include <xs>
 
-#define PLUGIN  "EnhancedParachuteLite"
+#define PLUGIN  "Enhanced Parachute Lite"
 #define VERSION "0.1"
 #define AUTHOR  "lonewolf"
+#define URL     "https://github.com/igorkelvin/amxx-plugins"
 
 #define PARACHUTE_GRAVITY 0.1337 // avoid rare coincidence with other plugins
 
@@ -27,7 +28,7 @@ new keep_speed[MAX_PLAYERS+1];
 
 public plugin_init()
 {
-  register_plugin(PLUGIN, VERSION, AUTHOR)
+  register_plugin(PLUGIN, VERSION, AUTHOR, URL);
 
   cvar_fallspeed = create_cvar("parachute_fallspeed", "100",  FCVAR_ARCHIVE, "<0-2000> Parachute fallspeed. Default: 80");
   cvar_noaccel   = create_cvar("parachute_noaccel",   "0",   FCVAR_ARCHIVE, "<0|1> Disable speed gain on parachute. Default: 0");

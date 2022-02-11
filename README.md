@@ -2,25 +2,25 @@
 
 ## Introduction
 
-Plugins made for [Counter Strike 1.6](https://store.steampowered.com/app/10/CounterStrike/) using [AMX ModX](https://github.com/alliedmodders/amxmodx).
+Plugins made for [Counter Strike 1.6](https://store.steampowered.com/app/10/CounterStrike/) using [AMX Mod X](https://github.com/alliedmodders/amxmodx).
 
 ## Plugins
 
-* [AdvancedObserver](#AdvancedObserver) 
-* [AimPrecision](#AimPrecision) 
-* [AimTrainer](#AimTrainer) 
-* [Cameras](#Cameras) 
-* [EnhancedAutoDemo](#EnhancedAutoDemo)
-* [EnhancedMultiJump](#EnhancedMultiJump) 
-* [EnhancedParachuteLite](#EnhancedParachuteLite) 
-* [EntitiesUtils](#EntitiesUtils) 
-* [MaxSpeed](#MaxSpeed) 
-* [PlaceModels](#PlaceModels) 
-* [QueryCvar](#QueryCvar)
-* [ReEnhancedFlashBang](#ReEnhancedFlashBang)
-* [TeamUtils](#TeamUtils) 
+* [Advanced Observer](#advanced-observer) 
+* [Aim Precision](#aim-precision) 
+* [Aim Trainer](#aim-trainer) 
+* [Enhanced Auto Demo](#enhanced-auto-demo)
+* [Enhanced Flashbang Reapi](#enhanced-flashbang-reapi)
+* [Enhanced MultiJump](#enhanced-multiJump) 
+* [Enhanced Parachute Lite](#enhanced-parachute-lite) 
+* [Maxspeed](#maxspeed) 
+* [Observer Cameras](#observer-cameras) 
+* [Place Models](#place-models) 
+* [Utils: Entities](#utils-entities) 
+* [Utils: Query Cvar](#utils-query-cvar)
+* [Utils: Teams](#utils-team) 
 
-### [AdvancedObserver](./lonewolf-AdvancedObserver.sma)
+### [Advanced Observer](./advanced_observer.sma)
 
 Brings many quality-of-life features for spectators/observers focused on Clan-vs-Clans matches and big matches.
 
@@ -41,52 +41,36 @@ Brings many quality-of-life features for spectators/observers focused on Clan-vs
 
 | Command | Alternative | Description |
 | --- | --- | --- |
-| say /obs | | Enable/disable Advanced Observer features |
-| say /obsdebug | | Enable/disable Advanced Observer debug |
-| say /debug | | Print debug |
-| +camera_grenade | +reload | Real time target's grenade following |
-| | slot1 | Switches target to next Terrorist alive |
-| | slot2 | Switches target to next Counter-terrorist alive |
-| +camera_c4 | slot5 | Follow player holding C4 or C4 entity if dropped or planted |
-| +camera_flag_red | slot6 | Follow player holding Red Flag or Red Flag entity if dropped or in stand |
-| +camera_flag_blue | slot7 | Follow player holding Blue Flag or Blue Flag entity if dropped or in stand |
-| +camera_chase | | Hold key to keep Observer mode to Locked Chase |
-| +camera_hook | | Switch to aimed target while in Free look |
+| say /obs | | Enable/disable Advanced Observer features. |
+| say /obsdebug | | Enable/disable Advanced Observer debug. |
+| say /debug | | Print debug. |
+| +camera_grenade | +reload | Real time target's grenade following. |
+| | slot1 | Switches target to next Terrorist alive. |
+| | slot2 | Switches target to next Counter-terrorist alive. |
+| +camera_c4 | slot5 | Follow player holding C4 or C4 entity if dropped or planted. |
+| +camera_flag_red | slot6 | Follow player holding Red Flag or Red Flag entity if dropped or in stand. |
+| +camera_flag_blue | slot7 | Follow player holding Blue Flag or Blue Flag entity if dropped or in stand. |
+| +camera_chase | | Hold key to keep Observer mode to Locked Chase. |
+| +camera_hook | | Switch to aimed target while in Free look. |
 
 
-### [AimPrecision](./lonewolf-AimPrecision.sma)
+### [Aim Precision](./aim_precision.sma)
 
 Reversed enginered Counter-Strike's pseudo random for shot spread and precision real time visualization with laser beams for training purposes. Implemented for AK-47 and Deagle only. (Why would you use anything else?)
 
 | Command | Description |
 | --- | --- |
-|say /precision | Enable/disable AimPrecision laserbeam |
+|say /precision | Enable/disable AimPrecision laserbeam. |
 
-### [AimTrainer](./lonewolf-AimTrainer.sma)
+### [Aim Trainer](./aim_trainer.sma)
 
 Tracks user's Deagle shot precision and timing, informing if shot was in perfect conditions of precision and how late or early was the shot time in relation with the minimum recovery time.
 
 | Command | Description |
 | --- | --- |
-|say /aim | Enable/disable AimTrainer info |
+|say /aim | Enable/disable AimTrainer info. |
 
-### [Cameras](./lonewolf-Cameras.sma)
-
-Easy to configure Fixed Cameras Teleports plugin for spectator usage with objective to dynamize matches' online streaming. Fully configurable by menu or by editing server's "maps/\<mapname\>.cameras" file, which is automatically generated when saved in-game by an admin with [ADMIN_CVAR](https://wiki.alliedmods.net/Adding_Admins_(AMX_Mod_X)#Access_Levels) flag. Perfect combo to [AdvancedSpectator](#AdvancedSpectator).
-
-| Command | Description |
-| --- | --- |
-| say /cam | Open Cameras' teleport menu |
-| say /cam \<number\> | Teleport to Camera \<number\> without menu prompt |
-| say /camcfg | Open Cameras' config menu |
-| +cameras_shift | Hold to add +10 to "say /cam" argument |
-
-| Cvar | Default | Description |
-| --- | --- | --- |
-| amx_cameras_enabled | "1" | \<0/1\> Disable/Enable Cameras Plugin |
-| amx_cameras_spec_only | "1" | \<0/1\> Only spectators can use Cameras |
-
-### [EnhancedAutoDemo](./lonewolf-EnhancedAutoDemo.sma)
+### [Enhanced Auto Demo](./enhanced_auto_demo.sma)
 
 
 Demo recorder plugin with timestamp, server name, ip, mapname that footprints all players nick and steamid on demo start. No-config-needed made from scratch replacement for [Auto Demo Recorder](https://forums.alliedmods.net/showthread.php?p=770786) by IzI with the main objective of recording demos with unique filename for Clan Fights.
@@ -96,25 +80,35 @@ Enhancements:
 * Report server and players info on client's console on demo start, including server's hostname, IP address, mapname, timestamp and a list of players in server with nickname and steamid;
 * Auto stopping demo recording on map change;
 
-| Command | Usage |
+| Command | Description |
 | --- | --- |
-| amx_demo | amx_demo \<0 or * or ID or NICK or STEAMID\> |
-| amx_demoall | Same as "amx_demo *" |
-| amx_demomenu | Open demo record menu |
+| amx_demo | Start recording for selected players.<br/>`amx_demo 0` - Record all players<br/>`amx_demo *` - Record all players<br/>`amx_demo 1` - Record player with id "1"<br/>`amx_demo lonewolf` - Record player with name "lonewolf"<br/>`amx_demo STEAM_0:0:8354200` - Record player with authid "STEAM_0:0:8354200" |
+| amx_demoall | Same as `amx_demo *`. |
+| amx_demomenu | Open demo record menu. |
 
 | Cvar | Default | Description |
 | --- | --- | --- |
-| amx_demo_auto | "1" | Record demo on client connect |
-| amx_demo_time | "0" | Append timestamp on demo filename |
-| amx_demo_map | "0" | Append mapname on demo filename |
-| amx_demo_steam | "0" | Append steamid on demo filename |
-| amx_demo_nick | "0" | Append nickname on demo filename |
-| amx_demo_notify | "1" | Print demo info on chat on record start |
-| amx_demo_name | "EnhancedAutoDemo" | Base prefix for demo filename |
-| amx_demo_prefix | "EnhancedAutoDemo" | Chat prefix |
-| amx_demo_autostop | "1" | Automatically stop demo on map end |
+| amx_demo_auto | 1 | Record demo on client connect. |
+| amx_demo_time | 0 | Append timestamp on demo filename. |
+| amx_demo_map | 0 | Append mapname on demo filename. |
+| amx_demo_steam | 0 | Append steamid on demo filename. |
+| amx_demo_nick | 0 | Append nickname on demo filename. |
+| amx_demo_notify | 1 | Print demo info on chat on record start. |
+| amx_demo_name | "EnhancedAutoDemo" | Base prefix for demo filename. |
+| amx_demo_prefix | "EnhancedAutoDemo" | Chat prefix. |
+| amx_demo_autostop | 1 | Automatically stop demo on map change. |
 
-### [EnhancedMultiJump](./lonewolf-EnhancedMultiJump.sma)
+### [Enhanced Flashbang Reapi](./enhanced_flashbang_reapi.sma)
+
+Initially created to fix an old bug on the flashbang's blinding logic that if a player has been totally blinded, but the flash hasn't fully faded, any other flashbang will totally blind him, even if it explodes behind his back. It also implements options to not blind teammates, totally or partially, or the player itself.
+
+| Cvar | Default | Description |
+| --- | --- | --- |
+| amx_flash_fix | 1 | Fixes flashbang's blinding logic when turned around.<br/>`0` disabled<br/>`1` enabled |
+| amx_flash_team | 0 | Allow team flashing.<br/>`0` don't flash teammates<br/>`1` always flash teammates<br/>`2` only flash teammates if `mp_friendlyfire` is enabled<br/>`3` partially blind teammates" |
+| amx_flash_self | 1 | When set the flashbang will blind its owner.<br/>`0` disabled<br/>`1` enabled |
+
+### [Enhanced MultiJump](./enhanced_multijump.sma)
 
 Based on twistedeuphoria's [MultiJump](https://forums.alliedmods.net/showthread.php?t=10159) this plugin uses Counter Strike's [jump implementation](https://github.com/s1lentq/ReGameDLL_CS/blob/e86284b08cb7dcae3c66cc08262e88d7b81dbafc/regamedll/pm_shared/pm_shared.cpp#L2345) to make multi jumps that behave like real jumps.
 
@@ -130,28 +124,20 @@ Based on twistedeuphoria's [MultiJump](https://forums.alliedmods.net/showthread.
 
 | Cvar | Default | Description |
 | --- | --- | --- |
-| amx_maxjumps | "1" | \<int\> maximum number of airjumps |
-| amx_airjumplikebhop | "0" | \<0\|1\> Horizontal speed of airjump works like in a bhop in CS 1.6, nerfing jumping in speeds higher than ~120% of weapon's maximum speed |
+| amx_maxjumps | 1 | Maximum number of air jumps.<br/>`0` only standard jump<br/> `1-9999` number of air jumps|
+| amx_airjumplikebhop | 0 | Should the horizontal speed of air jump works like in a standard bhop in CS 1.6.<br/>`0` unlimited speed while air jumping<br/>`1` limit speed higher than ~120% of current weapon's maximum speed |
 
-### [EnhancedParachuteLite](./lonewolf-EnhancedParachuteLite.sma)
+### [Enhanced Parachute Lite](./enhanced_parachute_lite.sma)
 
 Parachute plugin based on CSRevo's [Parachute Lite](https://www.csrevo.com/2019/09/plugin-paraquedas-lite.html) by Wilian M. with few rare bugs corrected and configurable anti speed abuse features.
 
 | Cvar | Default | Description |
 | --- | --- | --- |
-| parachute_fallspeed | "100" | \<0-2000\> Parachute fallspeed. |
-| parachute_noaccel | "0" | \<0\|1\> Disable speed gain on parachute. |
-| parachute_maxspeed | "2000" | \<0-2000\> Parachute maxspeed. |
+| parachute_fallspeed | 100 | Parachute fallspeed.<br/>`0 - 2000` fallspeed in units/s |
+| parachute_noaccel | 0 | Acceleration behavior on parachute.<br/>`0` normal speed behavior<br/>`1` player is unable to gain speed while using parachute|
+| parachute_maxspeed | 2000 | Parachute maximum speed.<br/>`0 - 2000` player's maximum speed while using parachute |
 
-### [EntitiesUtils](./lonewolf-EntitiesUtils.sma)
-
-Work-in-progress plugin with useful entities info commands.
-
-| Command | Description |
-| --- | --- |
-| entities_list \<number\> | Print 30 entities's ID, Classname and Model starting from \<number\> |
-
-### [MaxSpeed](./lonewolf-MaxSpeed.sma)
+### [Maxspeed](./maxspeed.sma)
 
 Anti-acceleration abuse plugin, limits the maximum speed or even acceleration in many different scenarios in a smooth fashion while maintaining the velocity direction for better user experience.
 
@@ -161,17 +147,33 @@ Anti-acceleration abuse plugin, limits the maximum speed or even acceleration in
 
 | Cvar | Default | Description |
 | --- | --- | --- |
-| amx_maxspeed_enabled | "1" | \<0/1\> Disable/Enable MaxSpeed Plugin |
-| amx_maxspeed | "400" | \<0-2000\> Maximum airspeed) |
-| amx_maxspeed_surfspeed | "2000" | \<0-2000\> Maximum speed while surfing |
-| amx_maxspeed_duckspeed | "300" | \<0-2000\> Maximum speed after double-ducking |
-| amx_maxspeed_swimspeed | "400" | \<0-2000\> Maximum speed on water |
-| amx_maxspeed_usespeed | "400" | \<0-2000\> Maximum speed holding +use, usually applied for parachute |
-| amx_maxspeed_debug | "0" | \<0/1\> Enables "say /speed" command |
-| amx_maxspeed_noaccel | "0" | \<0-15\> Bitsum: 1-Airstrafe noaccel, 2-Swim noaccel, 4-Surf noaccel, 8-Use noaccel |
-| amx_maxspeed_relative | "1" | "\<0\|1\> The maximum speed is relative to the maximum speed of the weapon, referencing the maximum speed of 250 units/s from knife and pistols |
+| amx_maxspeed_enabled | 1 | Globally enables Max Speed Plugin.<br/>`0` disabled<br/>`1` enabled |
+| amx_maxspeed | 400 | Maximum air speed in a normal jump.<br/>`0 - 2000` in units/s |
+| amx_maxspeed_surfspeed | 2000 | Maximum speed while surfing.<br/>`0 - 2000` in units/s |
+| amx_maxspeed_duckspeed | 300 | Maximum speed after double-ducking.<br/>`0 - 2000` in units/s |
+| amx_maxspeed_swimspeed | 400 | Maximum speed under water.<br/>`0 - 2000` in units/s |
+| amx_maxspeed_usespeed | 400 | Maximum speed holding `+use`, usually applied for parachute.<br/>`0 - 2000` in units/s |
+| amx_maxspeed_debug | 0 | Allow debug.<br/>`0` normal behavior<br/>`1` enables `say /speed` command |
+| amx_maxspeed_noaccel | 0 | `0 - 15` Bitsum:<br/> `1` disable airstrafe acceleration<br/>`2` disable swim acceleration<br/>`4` disable surf acceleration<br/>`8` disable `+use` acceleration<br/> Example:<br/>`amx_maxspeed_noaccel 11` is the bitsum of `1 + 4 + 8` and removes acceleration for normal jumping, surfing and `+use`, while keeping freely allowing player to surf. |
+| amx_maxspeed_relative | 1 | Sets the player's maximum speed relative to his actual maximum speed weapon, using knife' maxspeed of 250 units/s as reference.<br/>`0` maximum speed configured is absolute for any weapon<br/>`1` maximum speed respects player's actual entity's maxspeed|
 
-### [PlaceModels](./lonewolf-PlaceModels.sma)
+### [Observer Cameras](./observer_cameras.sma)
+
+Easy to configure Fixed Cameras Teleports plugin for spectator usage with objective to dynamize matches' online streaming. Fully configurable by menu or by editing server's "maps/\<mapname\>.cameras" file, which is automatically generated when saved in-game by an admin with [ADMIN_CVAR](https://wiki.alliedmods.net/Adding_Admins_(AMX_Mod_X)#Access_Levels) flag. Perfect combo to [Advanced Observer](#advanced-observer).
+
+| Command | Description |
+| --- | --- |
+| say /cam | Open Cameras' teleport menu |
+| say /cam \<number\> | Teleport to Camera \<number\> without menu prompt |
+| say /camcfg | Open Cameras' config menu |
+| +cameras_shift | Hold to add +10 to "say /cam" argument |
+
+| Cvar | Default | Description |
+| --- | --- | --- |
+| amx_cameras_enabled | 1 | Globally enables cameras usage<br/>`0` disabled<br/>`1` enabled |
+| amx_cameras_spec_only | 1 | Who can use can use cameras<br/>`0` everyone, alive or dead<br/>`1` only spectators |
+
+### [Place Models](./place_models.sma)
 
 #### WORK IN PROGRESS!
 
@@ -182,25 +184,23 @@ In-map configurable static models placer, focused on simplicity to set origin an
 | say /place | Opens PlaceModels menu |
 | say /models | Toggle rendering of placed models, player based |
 
-### [QueryCvar](./lonewolf-QueryCvar.sma)
+### [Utils: Entities](./utils_entities.sma)
+
+Work-in-progress plugin with useful entities info commands.
+
+| Command | Description |
+| --- | --- |
+| entities_list `<number>` | Print 30 entities's ID, Classname and Model starting from `<number>` |
+
+### [Utils: Query Cvar](utils_query_cvar.sma)
 
 Admin command to query an user's config by id, user steam or nickname.
 
 | Command | Usage |
 | --- | --- |
-|query | query \<0 or id or name or authid\> \<cvar\> |
+|query | query `0` or `id` or `name` or `authid` `cvar` |
 
-### [ReEnhancedFlashBang](./lonewolf-ReEnhancedFlashBang.sma)
-
-Initially created to fix an old bug on the flashbang's blinding logic that if a player has been totally blinded, but the flash hasn't fully faded, any other flashbang will totally blind him, even if it explodes behind his back. It also implements options to not blind teammates, totally or partially, or the player itself.
-
-| Cvar | Default | Description |
-| --- | --- | --- |
-| amx_flash_fix | "1" | Fixes flashbang's blinding logic when turned around.<br/>`0` Disabled<br/>`1` Enabled |
-| amx_flash_team | "0" | Allow team flashing.<br/>`0` Don't flash teammates;<br/>`1` Always flash teammates;<br/>`2` Only flash teammates if `mp_friendlyfire` is enabled;<br/>`3` Partially blind teammates" |
-| amx_flash_self | "1" | When set the flashbang will blind its owner.<br/>`0` Disabled<br/>`1` Enabled |
-
-### [TeamUtils](./lonewolf-TeamUtils.sma)
+### [Utils: Teams](./utils_teams.sma)
 
 Useful admins commands to swap or shuffle teams while keeping player's scores.
 

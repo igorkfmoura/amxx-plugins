@@ -4,9 +4,10 @@
 #include <fakemeta>
 #include <json>
 
-#define PLUGIN  "PlaceModels"
+#define PLUGIN  "Place Models"
 #define VERSION "0.0.6.1"
 #define AUTHOR  "lonewolf"
+#define URL     "https://github.com/igorkelvin/amxx-plugins"
 
 #if !defined MAX_MAPNAME_LENGTH
 #define MAX_MAPNAME_LENGTH 64
@@ -114,7 +115,7 @@ public plugin_precache()
 
 public plugin_init()
 {
-  register_plugin(PLUGIN, VERSION, AUTHOR);
+  register_plugin(PLUGIN, VERSION, AUTHOR, URL);
   
   models_load_json();
 

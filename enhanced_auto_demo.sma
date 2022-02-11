@@ -9,9 +9,10 @@
 #include <regex>
 #include <cstrike>
 
-#define PLUGIN  "EnhancedAutoDemo"
+#define PLUGIN  "Enhanced Auto Demo"
 #define VERSION "0.5.1"
 #define AUTHOR  "lonewolf"
+#define URL     "https://github.com/igorkelvin/amxx-plugins"
 
 #if !defined MAX_MAPNAME_LENGTH
 #define MAX_MAPNAME_LENGTH 64
@@ -55,7 +56,7 @@ new menu_demomenu_callback_id;
 
 public plugin_init()
 {
-  register_plugin(PLUGIN, VERSION, AUTHOR)
+  register_plugin(PLUGIN, VERSION, AUTHOR, URL)
   
   cvars[AUTO]      = create_cvar("amx_demo_auto",     "1", _, "Record demo on client connect");  
   cvars[TIMESTAMP] = create_cvar("amx_demo_time",     "0", _, "Append timestamp on demo filename");

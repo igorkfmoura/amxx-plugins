@@ -7,9 +7,10 @@
 #include <cstrike>
 #include <xs>
 
-#define PLUGIN  "AimPrecision"
+#define PLUGIN  "Aim Precision"
 #define VERSION "0.2"
 #define AUTHOR  "lonewolf"
+#define URL     "https://github.com/igorkelvin/amxx-plugins"
 
 new const seed_table[256] =
 {
@@ -51,7 +52,7 @@ public plugin_precache( )
 
 public plugin_init()
 {
-  register_plugin(PLUGIN, VERSION, AUTHOR);
+  register_plugin(PLUGIN, VERSION, AUTHOR, URL);
   
   RegisterHam(Ham_Spawn,  "player", "event_player_spawn",  .Post = true)
   RegisterHam(Ham_Killed, "player", "event_player_killed", .Post = true);

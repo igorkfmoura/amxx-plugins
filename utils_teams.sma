@@ -3,9 +3,10 @@
 #include <cstrike>
 #include <fakemeta>
 
-#define PLUGIN  "TeamUtils"
+#define PLUGIN  "Utils: Teams"
 #define VERSION "0.2"
 #define AUTHOR  "lonewolf"
+#define URL     "https://github.com/igorkelvin/amxx-plugins"
 
 #define PREFIX  "^4[TeamUtils]^1"
 
@@ -31,7 +32,7 @@ static deaths[MAX_PLAYERS + 1];
 
 public plugin_init() 
 {
-  register_plugin(PLUGIN, VERSION, AUTHOR);
+  register_plugin(PLUGIN, VERSION, AUTHOR, URL);
   
   // msgid_teamscore = get_user_msgid("TeamScore");
   

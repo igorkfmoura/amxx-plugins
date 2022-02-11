@@ -4,9 +4,10 @@
 #include <hamsandwich>
 #include <xs>
 
-#define PLUGIN  "AimTrainer"
+#define PLUGIN  "Aim Trainer"
 #define VERSION "0.2"
 #define AUTHOR  "lonewolf"
+#define URL     "https://github.com/igorkelvin/amxx-plugins"
 
 new hudsync1;
 new hudsync2;
@@ -24,7 +25,7 @@ new Float:timer[MAX_PLAYERS + 1];
 
 public plugin_init()
 {
-  register_plugin(PLUGIN, VERSION, AUTHOR)
+  register_plugin(PLUGIN, VERSION, AUTHOR, URL)
   
   register_clcmd("say /aim", "cmd_aim");
   

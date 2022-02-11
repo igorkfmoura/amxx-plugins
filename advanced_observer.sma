@@ -9,9 +9,10 @@
 #include <fakemeta_stocks>
 #include <xs>
 
-#define MOD_TITLE   "AdvancedObserver"
-#define MOD_VERSION "0.6.3"
-#define MOD_AUTHOR  "lonewolf"
+#define PLUGIN  "Advanced Observer"
+#define VERSION "0.6.3"
+#define AUTHOR  "lonewolf"
+#define URL     "https://github.com/igorkelvin/amxx-plugins"
 
 #define PREFIX "^4[AdvancedObserver]^1"
 
@@ -107,7 +108,7 @@ new menuid_fakeinput;
 
 public plugin_init()
 {
-  register_plugin(MOD_TITLE, MOD_VERSION, MOD_AUTHOR);
+  register_plugin(PLUGIN, VERSION, AUTHOR, URL);
   
   register_clcmd("say /obs",      "cmd_obs");
   register_clcmd("say /obsdebug", "cmd_obsdebug", ADMIN_CVAR);

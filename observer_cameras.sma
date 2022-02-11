@@ -7,9 +7,10 @@
 #include <fakemeta>
 #include <xs>
 
-#define PLUGIN  "Cameras"
+#define PLUGIN  "Observer Cameras"
 #define VERSION "0.1"
 #define AUTHOR  "lonewolf"
+#define URL     "https://github.com/igorkelvin/amxx-plugins"
 
 #define PREFIX "^4[Cameras]^1"
 
@@ -64,7 +65,7 @@ public plugin_cfg()
 
 public plugin_init()
 {
-  register_plugin(PLUGIN, VERSION, AUTHOR)
+  register_plugin(PLUGIN, VERSION, AUTHOR, URL);
   
   menu_check_max_callback_id     = menu_makecallback("menu_check_max_callback");
   menu_check_enabled_callback_id = menu_makecallback("menu_check_enabled_callback");

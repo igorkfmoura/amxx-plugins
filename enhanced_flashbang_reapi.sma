@@ -13,9 +13,10 @@
 
 #pragma semicolon 1
 
-#define PLUGIN  "ReEnhancedFlashBang"
+#define PLUGIN  "Enhanced FlashBang Reapi"
 #define AUTHOR  "lonewolf"
 #define VERSION "0.1"
+#define URL     "https://github.com/igorkelvin/amxx-plugins"
 
 enum Cvars 
 {
@@ -36,7 +37,7 @@ enum FlashTeammates
 
 public plugin_init()
 {
-  register_plugin(PLUGIN, VERSION, AUTHOR);  
+  register_plugin(PLUGIN, VERSION, AUTHOR, URL);  
 
   cvars[FIX]  = create_cvar("amx_flash_fix", "1", _, "Fixes flashbangs blinding when turned around");
   cvars[TEAM] = create_cvar("amx_flash_team", "0", _, "<0-2> Allow team flashing. 0 - Don't flash teammates; 1 - Always flash teammates; 2 - Only flash teammates if mp_friendlyfire is '1'; 3 - Partially blind teammates");

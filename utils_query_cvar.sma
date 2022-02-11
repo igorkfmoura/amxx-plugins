@@ -3,6 +3,7 @@
 #define PLUGIN  "QueryCvar"
 #define VERSION "0.1.1"
 #define AUTHOR  "lonewolf"
+#define URL     "https://github.com/igorkelvin/amxx-plugins"
 
 #define PREFIX_CHAT    "^4[QueryCvar]^1"
 #define PREFIX_CONSOLE "[QueryCvar]"
@@ -17,7 +18,7 @@
 
 public plugin_init()
 {
-  register_plugin(PLUGIN, VERSION, AUTHOR)
+  register_plugin(PLUGIN, VERSION, AUTHOR, URL);
   
   register_clcmd("query", "cmd_query", ADMIN_PERMISSION, USAGE);
 }

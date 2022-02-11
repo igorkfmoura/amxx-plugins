@@ -7,9 +7,10 @@
 #include <fakemeta>
 #include <xs>
 
-#define PLUGIN  "MaxSpeed"
+#define PLUGIN  "Maxspeed"
 #define VERSION "0.14"
 #define AUTHOR  "lonewolf"
+#define URL     "https://github.com/igorkelvin/amxx-plugins"
 
 #define PREFIX "^4[MaxSpeed]^1"
 
@@ -70,7 +71,7 @@ enum (<<= 1)
 
 public plugin_init()
 {
-  register_plugin(PLUGIN, VERSION, AUTHOR);
+  register_plugin(PLUGIN, VERSION, AUTHOR, URL);
   
   cvar_enabled   = create_cvar("amx_maxspeed_enabled",   "1",    _, "<0/1> Disable/Enable MaxSpeed Plugin");
   cvar_maxspeed  = create_cvar("amx_maxspeed",           "400",  _, "<0-2000> Maximum airspeed");

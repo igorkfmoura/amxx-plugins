@@ -10,9 +10,10 @@
 #include <reapi>
 #include <xs>
 
-#define PLUGIN  "EnhancedMultiJump"
+#define PLUGIN  "Enhanced MultiJump"
 #define VERSION "0.7.1"
 #define AUTHOR  "lonewolf"
+#define URL     "https://github.com/igorkelvin/amxx-plugins"
 
 // https://github.com/s1lentq/ReGameDLL_CS/blob/f57d28fe721ea4d57d10c010d15d45f05f2f5bad/regamedll/pm_shared/pm_shared.cpp#L2477
 // https://github.com/s1lentq/ReGameDLL_CS/blob/f57d28fe721ea4d57d10c010d15d45f05f2f5bad/regamedll/pm_shared/pm_shared.cpp#L2487
@@ -33,7 +34,7 @@ new Float:sv_gravity;
 
 public plugin_init()
 {
-  register_plugin(PLUGIN, VERSION, AUTHOR)
+  register_plugin(PLUGIN, VERSION, AUTHOR, URL)
   
   bind_pcvar_num(create_cvar("amx_maxjumps", "1", _, "<int> maximum number of airjumps", true, 0.0), maxjumps);
   bind_pcvar_num(create_cvar("amx_airjumplikebhop", "1", _, "<bool> Treat jump horizontal speed as bhop"), airjumplikebhop);
