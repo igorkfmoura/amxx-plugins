@@ -1,9 +1,10 @@
 #include <amxmodx>
+#include <engine>
 #include <reapi>
 #include <xs>
 
 #define PLUGIN  "Advanced Observer Reapi"
-#define VERSION "0.2"
+#define VERSION "0.2.1"
 #define AUTHOR  "lonewolf"
 #define URL     "https://github.com/igorkelvin/amxx-plugins"
 
@@ -15,11 +16,12 @@
 - fix spec bug on Observer_IsValidTarget
 - ~~fix freelook camera position~~
 - fix fadetoblack for specs
-- observer target C4 holder
-- observer target C4 entity if no holder
+- ~~observer target C4 holder~~
+- ~~observer target C4 entity if no holder~~
 - observer grenade camera
 - observer doppelganger, copy inputs from another observer
 - ~~restrict observer modes~~
+- fix observer crosshair
 */
 
 // Note: beware of non-standard bit position, %2 should be on 1-32 range and 
@@ -58,9 +60,16 @@ enum _:HookChainIds
 {
     HookChain:KILLED_POST,
     HookChain:OBS_SETMODE_POST,
-    HookChain:OBS_SETMODE_PRE
+    HookChain:OBS_SETMODE_PRE,
+    HookChain:PLANT_BOMB
 };
 new hooks[HookChainIds];
+
+enum _:Entities
+{
+    C4
+};
+new entities[Entities];
 
 public plugin_init()
 {
@@ -69,8 +78,14 @@ public plugin_init()
     hooks[KILLED_POST]      = RegisterHookChain(RG_CBasePlayer_Killed, "CBasePlayer_Killed_Post", true);
     hooks[OBS_SETMODE_PRE]  = RegisterHookChain(RG_CBasePlayer_Observer_SetMode, "CBasePlayer_Observer_SetMode_Pre");
     hooks[OBS_SETMODE_POST] = RegisterHookChain(RG_CBasePlayer_Observer_SetMode, "CBasePlayer_Observer_SetMode_Post", true);
+    hooks[PLANT_BOMB]       = RegisterHookChain(RG_PlantBomb, "PlantBomb", true);
+    
+    register_event("ScoreAttrib", "event_pickedthebomb", "bc", "2=2");
+    register_logevent("event_droppedthebomb", 3, "2=Dropped_The_Bomb");
+    // register_logevent("event_plantedthebomb", 3, "2=Planted_The_Bomb");
 
     register_clcmd("say /obs", "cmd_say_obs");
+    register_clcmd("say /c4", "cmd_say_c4");
 
     for (new i = 1; i <= MAX_PLAYERS; ++i)
     {
@@ -78,6 +93,26 @@ public plugin_init()
     }
 }
 
+public cmd_say_c4(id)
+{
+    client_print(id, print_chat, "entities[C4]: %d", entities[C4]);
+
+    if (!is_entity(entities[C4]))
+    {
+        return PLUGIN_HANDLED;
+    }
+
+    if (is_user_alive(entities[C4]))
+    {
+        Observer_SetTarget(id, entities[C4]);
+
+        return PLUGIN_HANDLED;
+    }
+    
+    camera_follow_entity(id, entities[C4], .fixangle=1);
+
+    return PLUGIN_HANDLED;
+}
 
 public client_disconnected(id)
 {
@@ -104,9 +139,60 @@ public cmd_say_obs(id)
     }
 
     BIT_PL_XOR(cfg[ENABLED_BITS], id);
-    client_print_color(id, print_team_red, "%s Advanced Observer is now %s.", PREFIX_CHAT, BIT_IS_SET(cfg[ENABLED_BITS], id) ? "^4enabled^1" : "^3disabled^1");
+    client_print_color(id, print_team_red, "%s Advanced Observer is now %s.", PREFIX_CHAT, BIT_PL_IS_SET(cfg[ENABLED_BITS], id) ? "^4enabled^1" : "^3disabled^1");
 
     return PLUGIN_HANDLED;
+}
+
+
+public event_pickedthebomb()
+{
+    new id = read_data(1);
+  
+    if (is_user_alive(id))
+    {
+      entities[C4] = id;
+    }
+}
+
+public event_droppedthebomb(id)
+{
+    set_task(0.1, "event_droppedthebomb_delayed", 25263);
+}
+
+public event_droppedthebomb_delayed()
+{
+    new weapon_c4 = rg_find_ent_by_class(0, "weapon_c4");
+  
+    if (!weapon_c4)
+    {
+      entities[C4] = 0;
+
+      return;
+    }
+  
+    new weaponbox = get_entvar(weapon_c4, var_owner);
+    if (is_user_connected(weaponbox)) // owner is still a player, not the weaponbox
+    {
+        entities[C4] = 0;
+        set_task(0.1, "event_droppedthebomb_delayed", 25263);
+
+        return;
+    }
+    
+    entities[C4] = weaponbox;
+}
+
+
+public PlantBomb()
+{
+    entities[C4] = GetHookChainReturn(ATYPE_EDICT);
+    if (!is_entity(entities[C4]))
+    {
+        entities[C4] = 0;
+    }
+
+    client_print_color(0, print_team_red, "Plantbomb, entities[C4]: %d", entities[C4]);
 }
 
 
@@ -178,10 +264,10 @@ public CBasePlayer_Observer_SetMode_Post(id, mode)
     eyes[0] += v_forward[0] * 10;
     eyes[1] += v_forward[1] * 10;
     
-    set_entvar(id, var_origin, eyes);
+    entity_set_origin(id, eyes);
+
     set_entvar(id, var_angles, tmp);
     set_entvar(id, var_v_angle, tmp);
-
     set_entvar(id, var_fixangle, 1);
 
     return HC_CONTINUE;
@@ -218,4 +304,61 @@ public Observer_SetTarget(id, target)
         set_entvar(id, var_iuser2, target);
         set_member(id, m_hObserverTarget, target);
     }
+}
+
+stock camera_follow_entity(id, ent, fixangle=0, Float:distance=200.0, Float:height=60.0)
+{
+    if (!is_user_connected(id))
+    {
+        return PLUGIN_CONTINUE;
+    }
+
+    // client_cmd(id, "specmode %d", OBS_ROAMING); // TODO: fix
+    set_entvar(id, var_iuser1, OBS_ROAMING);
+    set_entvar(id, var_iuser2, 0);
+    set_entvar(id, var_iuser3, 0);
+
+    set_member(id, m_iObserverLastMode, OBS_ROAMING);
+    set_member(id, m_bWasFollowing, false);
+
+    new Float:ent_origin[3];
+    new Float:id_origin[3];
+    new Float:angles[3];
+    new Float:v_forward[3];
+    new Float:fraction;
+
+    get_entvar(ent, var_origin, ent_origin);
+    get_entvar(id, var_v_angle, angles);
+
+    angle_vector(angles, ANGLEVECTOR_FORWARD, v_forward);
+    xs_vec_copy(ent_origin, id_origin);
+
+    id_origin[0] -= v_forward[0] * distance;
+    id_origin[1] -= v_forward[1] * distance;
+    id_origin[2] += height;
+
+    trace_line(-1, ent_origin, id_origin, angles);   
+    traceresult(TR_Fraction, fraction);
+
+    if (fraction < 1.0)
+    {
+        id_origin[0] += v_forward[0] * distance * (1 - (fraction * 0.9));
+        id_origin[1] += v_forward[1] * distance * (1 - (fraction * 0.9));
+    }
+
+    entity_set_origin(id, id_origin);
+
+    if (fixangle)
+    {
+        xs_vec_sub(ent_origin, id_origin, v_forward);
+        vector_to_angle(v_forward, angles);
+
+        angles[0] *= -1.0;
+
+        set_entvar(id, var_angles, angles);
+        set_entvar(id, var_angles, angles);
+        set_entvar(id, var_fixangle, 1);
+    }
+
+    return PLUGIN_HANDLED;
 }
