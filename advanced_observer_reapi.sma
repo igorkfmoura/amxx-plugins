@@ -4,7 +4,7 @@
 #include <xs>
 
 #define PLUGIN  "Advanced Observer Reapi"
-#define VERSION "0.2.1"
+#define VERSION "0.2.2"
 #define AUTHOR  "lonewolf"
 #define URL     "https://github.com/igorkelvin/amxx-plugins"
 
@@ -13,7 +13,7 @@
 
 /* todo
 - ~~observer switch to killer;~~
-- fix spec bug on Observer_IsValidTarget
+- ~~fix spec bug on Observer_IsValidTarget~~
 - ~~fix freelook camera position~~
 - fix fadetoblack for specs
 - ~~observer target C4 holder~~
@@ -61,6 +61,7 @@ enum _:HookChainIds
     HookChain:KILLED_POST,
     HookChain:OBS_SETMODE_POST,
     HookChain:OBS_SETMODE_PRE,
+    HookChain:OBS_ISVALIDTARGET,
     HookChain:PLANT_BOMB
 };
 new hooks[HookChainIds];
@@ -75,14 +76,15 @@ public plugin_init()
 {
     register_plugin(PLUGIN, VERSION, AUTHOR, URL);
 
-    hooks[KILLED_POST]      = RegisterHookChain(RG_CBasePlayer_Killed, "CBasePlayer_Killed_Post", true);
-    hooks[OBS_SETMODE_PRE]  = RegisterHookChain(RG_CBasePlayer_Observer_SetMode, "CBasePlayer_Observer_SetMode_Pre");
-    hooks[OBS_SETMODE_POST] = RegisterHookChain(RG_CBasePlayer_Observer_SetMode, "CBasePlayer_Observer_SetMode_Post", true);
-    hooks[PLANT_BOMB]       = RegisterHookChain(RG_PlantBomb, "PlantBomb", true);
-    
+    hooks[KILLED_POST]       = RegisterHookChain(RG_CBasePlayer_Killed, "CBasePlayer_Killed_Post", true);
+    hooks[OBS_SETMODE_PRE]   = RegisterHookChain(RG_CBasePlayer_Observer_SetMode, "CBasePlayer_Observer_SetMode_Pre");
+    hooks[OBS_SETMODE_POST]  = RegisterHookChain(RG_CBasePlayer_Observer_SetMode, "CBasePlayer_Observer_SetMode_Post", true);
+    hooks[PLANT_BOMB]        = RegisterHookChain(RG_PlantBomb, "PlantBomb", true);
+    hooks[OBS_ISVALIDTARGET] = RegisterHookChain(RG_CBasePlayer_Observer_IsValidTarget, "CBasePlayer_Observer_IsValidTarget");
+
     register_event("ScoreAttrib", "event_pickedthebomb", "bc", "2=2");
     register_logevent("event_droppedthebomb", 3, "2=Dropped_The_Bomb");
-    // register_logevent("event_plantedthebomb", 3, "2=Planted_The_Bomb");
+    register_logevent("event_plantedthebomb", 3, "2=Planted_The_Bomb");
 
     register_clcmd("say /obs", "cmd_say_obs");
     register_clcmd("say /c4", "cmd_say_c4");
@@ -95,6 +97,11 @@ public plugin_init()
 
 public cmd_say_c4(id)
 {
+    if (!is_user_connected(id) || BIT_PL_IS_CLR(cfg[ENABLED_BITS] || is_user_alive(id) || get_entvar(id, var_iuser1) == OBS_NONE)
+    {
+        return PLUGIN_HANDLED;
+    }
+
     client_print(id, print_chat, "entities[C4]: %d", entities[C4]);
 
     if (!is_entity(entities[C4]))
@@ -155,10 +162,12 @@ public event_pickedthebomb()
     }
 }
 
+
 public event_droppedthebomb(id)
 {
     set_task(0.1, "event_droppedthebomb_delayed", 25263);
 }
+
 
 public event_droppedthebomb_delayed()
 {
@@ -184,15 +193,27 @@ public event_droppedthebomb_delayed()
 }
 
 
-public PlantBomb()
-{
-    entities[C4] = GetHookChainReturn(ATYPE_EDICT);
-    if (!is_entity(entities[C4]))
+public event_plantedthebomb()
+{  
+    new grenade = -1;
+    new bool:grenade_is_c4;
+    while((grenade = rg_find_ent_by_class(grenade, "grenade")))
     {
-        entities[C4] = 0;
-    }
+        grenade_is_c4 = get_member(grenade, m_Grenade_bIsC4);
+        if (grenade_is_c4)
+        {
+            break;
+        }
+    } 
+    
+    // client_print(0, print_chat, "event_plantedthebomb grenade: %d, grenade_is_c4: %d", grenade, grenade_is_c4)
 
-    client_print_color(0, print_team_red, "Plantbomb, entities[C4]: %d", entities[C4]);
+    if ((grenade <= 0) || !grenade_is_c4)
+    {
+        return;
+    }
+    
+    entities[C4] = grenade;
 }
 
 
@@ -274,6 +295,42 @@ public CBasePlayer_Observer_SetMode_Post(id, mode)
 }
 
 
+public CBasePlayer_Observer_IsValidTarget(id, target, bool:sameteam)
+{
+    SetHookChainReturn(ATYPE_INTEGER, 0);
+
+    if (id == target || !is_user_connected(target) || !is_user_alive(target))
+    {
+        return HC_SUPERCEDE;
+    }
+
+    if (get_entvar(target, var_iuser1) != OBS_NONE)
+    {
+        return HC_SUPERCEDE;
+    }
+
+    if (get_entvar(target, var_effects) & EF_NODRAW)
+    {
+        return HC_SUPERCEDE;
+    }
+
+    new CsTeams:team = get_member(id, m_iTeam);
+    new CsTeams:team_target = get_member(target, m_iTeam);
+    if (team == CS_TEAM_UNASSIGNED)
+    {
+        return HC_SUPERCEDE;
+    }
+
+    if (sameteam && (team_target != team && team != CS_TEAM_SPECTATOR))
+    {
+        return HC_SUPERCEDE;
+    }
+
+    SetHookChainReturn(ATYPE_INTEGER, target);
+    return HC_SUPERCEDE;
+}
+
+
 public CBasePlayer_Killed_Post(victim, killer)
 {
     if (!is_user_connected(victim) && !is_user_alive(killer))
@@ -299,8 +356,9 @@ public CBasePlayer_Killed_Post(victim, killer)
 
 public Observer_SetTarget(id, target)
 {
-    if (is_user_connected(id))
+    if (is_user_connected(id) && is_user_alive(target))
     {
+        set_entvar(id, var_iuser1, OBS_IN_EYE);
         set_entvar(id, var_iuser2, target);
         set_member(id, m_hObserverTarget, target);
     }
@@ -313,7 +371,6 @@ stock camera_follow_entity(id, ent, fixangle=0, Float:distance=200.0, Float:heig
         return PLUGIN_CONTINUE;
     }
 
-    // client_cmd(id, "specmode %d", OBS_ROAMING); // TODO: fix
     set_entvar(id, var_iuser1, OBS_ROAMING);
     set_entvar(id, var_iuser2, 0);
     set_entvar(id, var_iuser3, 0);
