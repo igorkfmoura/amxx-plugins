@@ -13,7 +13,7 @@
 
 /* todo
 - ~~observer switch to killer;~~
-- ~~fix spec bug on Observer_IsValidTarget~~
+- ~~fix spec bug on GetForceCamera~~
 - ~~fix freelook camera position~~
 - fix fadetoblack for specs
 - ~~observer target C4 holder~~
@@ -37,6 +37,13 @@
 #define BIT_XOR(%1,%2)    ( (%1) ^=  (1 << (%2)))
 #define BIT_IS_SET(%1,%2) ( (%1) &   (1 << (%2)))
 #define BIT_IS_CLR(%1,%2) (~(%1) &   (1 << (%2)))
+
+enum _:CameraMode
+{
+    CAMERA_MODE_SPEC_ANYONE,
+    CAMERA_MODE_SPEC_ONLY_TEAM,
+    CAMERA_MODE_SPEC_ONLY_FIRST_PERSON
+};
 
 enum _:ObserverPreferences
 {
@@ -62,7 +69,8 @@ enum _:HookChainIds
     HookChain:OBS_SETMODE_POST,
     HookChain:OBS_SETMODE_PRE,
     HookChain:OBS_ISVALIDTARGET,
-    HookChain:PLANT_BOMB
+    HookChain:OBS_FORCECAMERA
+    // HookChain:PLANT_BOMB
 };
 new hooks[HookChainIds];
 
@@ -72,6 +80,15 @@ enum _:Entities
 };
 new entities[Entities];
 
+enum _:Cvars
+{
+    FADETOBLACK,
+    FORCECHASECAM,
+    FORCECAMERA
+};
+new cvars[Cvars];
+
+
 public plugin_init()
 {
     register_plugin(PLUGIN, VERSION, AUTHOR, URL);
@@ -79,8 +96,13 @@ public plugin_init()
     hooks[KILLED_POST]       = RegisterHookChain(RG_CBasePlayer_Killed, "CBasePlayer_Killed_Post", true);
     hooks[OBS_SETMODE_PRE]   = RegisterHookChain(RG_CBasePlayer_Observer_SetMode, "CBasePlayer_Observer_SetMode_Pre");
     hooks[OBS_SETMODE_POST]  = RegisterHookChain(RG_CBasePlayer_Observer_SetMode, "CBasePlayer_Observer_SetMode_Post", true);
-    hooks[PLANT_BOMB]        = RegisterHookChain(RG_PlantBomb, "PlantBomb", true);
-    hooks[OBS_ISVALIDTARGET] = RegisterHookChain(RG_CBasePlayer_Observer_IsValidTarget, "CBasePlayer_Observer_IsValidTarget");
+    // hooks[PLANT_BOMB]        = RegisterHookChain(RG_PlantBomb, "PlantBomb", true);
+    // hooks[OBS_ISVALIDTARGET] = RegisterHookChain(RG_CBasePlayer_Observer_IsValidTarget, "CBasePlayer_Observer_IsValidTarget");
+    hooks[OBS_FORCECAMERA] = RegisterHookChain(RG_GetForceCamera, "GetForceCamera");
+
+    bind_pcvar_num(get_cvar_pointer("mp_fadetoblack"),   cvars[FADETOBLACK]);
+    bind_pcvar_num(get_cvar_pointer("mp_forcechasecam"), cvars[FORCECHASECAM]);
+    bind_pcvar_num(get_cvar_pointer("mp_forcecamera"),   cvars[FORCECAMERA]);
 
     register_event("ScoreAttrib", "event_pickedthebomb", "bc", "2=2");
     register_logevent("event_droppedthebomb", 3, "2=Dropped_The_Bomb");
@@ -97,12 +119,12 @@ public plugin_init()
 
 public cmd_say_c4(id)
 {
-    if (!is_user_connected(id) || BIT_PL_IS_CLR(cfg[ENABLED_BITS] || is_user_alive(id) || get_entvar(id, var_iuser1) == OBS_NONE)
+    if (!is_user_connected(id) || BIT_PL_IS_CLR(cfg[ENABLED_BITS], id) || is_user_alive(id) || get_entvar(id, var_iuser1) == OBS_NONE)
     {
         return PLUGIN_HANDLED;
     }
 
-    client_print(id, print_chat, "entities[C4]: %d", entities[C4]);
+    // client_print(id, print_chat, "entities[C4]: %d", entities[C4]);
 
     if (!is_entity(entities[C4]))
     {
@@ -120,6 +142,7 @@ public cmd_say_c4(id)
 
     return PLUGIN_HANDLED;
 }
+
 
 public client_disconnected(id)
 {
@@ -295,35 +318,56 @@ public CBasePlayer_Observer_SetMode_Post(id, mode)
 }
 
 
+public GetForceCamera(id)
+{
+    new ret;
+
+    if (!cvars[FADETOBLACK])
+    {
+        ret = (cvars[FORCECHASECAM] == CAMERA_MODE_SPEC_ANYONE) ? cvars[FORCECAMERA] : cvars[FORCECHASECAM];
+    }
+    else
+    {
+        ret = CAMERA_MODE_SPEC_ONLY_FIRST_PERSON
+    }
+
+    if (ret != CAMERA_MODE_SPEC_ANYONE && (get_member(id, m_iTeam) == CS_TEAM_SPECTATOR))
+    {
+        ret = CAMERA_MODE_SPEC_ANYONE;
+    }
+
+    SetHookChainReturn(ATYPE_INTEGER, ret);
+    return HC_SUPERCEDE;
+}
+
+
 public CBasePlayer_Observer_IsValidTarget(id, target, bool:sameteam)
 {
-    SetHookChainReturn(ATYPE_INTEGER, 0);
-
     if (id == target || !is_user_connected(target) || !is_user_alive(target))
     {
-        return HC_SUPERCEDE;
+        return HC_CONTINUE;
     }
 
     if (get_entvar(target, var_iuser1) != OBS_NONE)
     {
-        return HC_SUPERCEDE;
+        return HC_CONTINUE;
     }
 
     if (get_entvar(target, var_effects) & EF_NODRAW)
     {
-        return HC_SUPERCEDE;
+        return HC_CONTINUE;
+    }
+
+    new CsTeams:team_target = get_member(target, m_iTeam);
+    if (team_target == CS_TEAM_UNASSIGNED)
+    {
+        return HC_CONTINUE;
     }
 
     new CsTeams:team = get_member(id, m_iTeam);
-    new CsTeams:team_target = get_member(target, m_iTeam);
-    if (team == CS_TEAM_UNASSIGNED)
-    {
-        return HC_SUPERCEDE;
-    }
-
     if (sameteam && (team_target != team && team != CS_TEAM_SPECTATOR))
     {
-        return HC_SUPERCEDE;
+        return HC_CONTINUE;
     }
 
     SetHookChainReturn(ATYPE_INTEGER, target);

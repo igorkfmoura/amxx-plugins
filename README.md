@@ -7,6 +7,7 @@ Plugins made for [Counter Strike 1.6](https://store.steampowered.com/app/10/Coun
 ## Plugins
 
 * [Advanced Observer](#advanced-observer) 
+* [Advanced Observer Reapi](#advanced-observer-reapi) 
 * [Aim Precision](#aim-precision) 
 * [Aim Trainer](#aim-trainer) 
 * [Enhanced Auto Demo](#enhanced-auto-demo)
@@ -53,6 +54,11 @@ Brings many quality-of-life features for spectators/observers focused on Clan-vs
 | +camera_chase | | Hold key to keep Observer mode to Locked Chase. |
 | +camera_hook | | Switch to aimed target while in Free look. |
 
+### [Advanced Observer Reapi](./advanced_observer_reapi.sma)
+
+#### WORK IN PROGRESS!
+
+Reapi rework of [Advanced Observer](#advanced-observer), focusing on better server performance and safety.
 
 ### [Aim Precision](./aim_precision.sma)
 
