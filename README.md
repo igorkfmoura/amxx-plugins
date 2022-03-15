@@ -15,6 +15,7 @@ Plugins made for [Counter Strike 1.6](https://store.steampowered.com/app/10/Coun
 * [Enhanced MultiJump](#enhanced-multiJump) 
 * [Enhanced Parachute Lite](#enhanced-parachute-lite) 
 * [Maxspeed](#maxspeed) 
+* [MOTD Rules](#motd-rules)
 * [Observer Cameras](#observer-cameras) 
 * [Place Models](#place-models) 
 * [Utils: Entities](#utils-entities) 
@@ -162,6 +163,18 @@ Anti-acceleration abuse plugin, limits the maximum speed or even acceleration in
 | amx_maxspeed_debug | 0 | Allow debug.<br/>`0` normal behavior<br/>`1` enables `say /speed` command |
 | amx_maxspeed_noaccel | 0 | `0 - 15` Bitsum:<br/> `1` disable airstrafe acceleration<br/>`2` disable swim acceleration<br/>`4` disable surf acceleration<br/>`8` disable `+use` acceleration<br/> Example:<br/>`amx_maxspeed_noaccel 11` is the bitsum of `1 + 4 + 8` and removes acceleration for normal jumping, surfing and `+use`, while keeping freely allowing player to surf. |
 | amx_maxspeed_relative | 1 | Sets the player's maximum speed relative to his actual maximum speed weapon, using knife' maxspeed of 250 units/s as reference.<br/>`0` maximum speed configured is absolute for any weapon<br/>`1` maximum speed respects player's actual entity's maxspeed|
+
+### [MOTD Rules](./motd_rules.sma)
+
+Simple file based MOTD viewer with custom path defined by cvar. Just configure your ```filename.html``` or ```filename.txt``` and point the configuration cvar to the right path. Uses a regex based filename checker to guarantee that file is a html or txt file.
+
+| Command | Description |
+| --- | --- |
+| say /rules | Show Rules MOTD |
+
+| Cvar | Default | Description |
+| --- | --- | --- |
+| amx_rulesfile | "rules.html" | Rules file **Absolute** path. By default has its roots on ```cstrike/``` folder.|
 
 ### [Observer Cameras](./observer_cameras.sma)
 
