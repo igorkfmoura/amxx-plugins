@@ -115,7 +115,7 @@ public plugin_precache()
 
 public plugin_init()
 {
-  register_plugin(PLUGIN, VERSION, AUTHOR, URL);
+  register_plugin(PLUGIN, VERSION, AUTHOR);
   
   models_load_json();
 

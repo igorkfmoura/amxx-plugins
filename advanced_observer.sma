@@ -120,7 +120,7 @@ new menuid_fakeinput;
 
 public plugin_init()
 {
-  register_plugin(PLUGIN, VERSION, AUTHOR, URL);
+  register_plugin(PLUGIN, VERSION, AUTHOR);
   
   register_clcmd("say /obs",      "cmd_obs");
   register_clcmd("say /obsdebug", "cmd_obsdebug", ADMIN_CVAR);

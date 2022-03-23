@@ -10,7 +10,7 @@
 
 public plugin_init()
 {
-  register_plugin(PLUGIN, VERSION, AUTHOR, URL);
+  register_plugin(PLUGIN, VERSION, AUTHOR);
   
   register_clcmd("entities_list", "cmd_entities_list", _, "List 30 entities starting from arg1");
 }

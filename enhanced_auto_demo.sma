@@ -56,7 +56,7 @@ new menu_demomenu_callback_id;
 
 public plugin_init()
 {
-  register_plugin(PLUGIN, VERSION, AUTHOR, URL)
+  register_plugin(PLUGIN, VERSION, AUTHOR);
   
   cvars[AUTO]      = create_cvar("amx_demo_auto",     "1", _, "Record demo on client connect");  
   cvars[TIMESTAMP] = create_cvar("amx_demo_time",     "0", _, "Append timestamp on demo filename");

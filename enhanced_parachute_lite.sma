@@ -28,7 +28,7 @@ new keep_speed[MAX_PLAYERS+1];
 
 public plugin_init()
 {
-  register_plugin(PLUGIN, VERSION, AUTHOR, URL);
+  register_plugin(PLUGIN, VERSION, AUTHOR);
 
   cvar_fallspeed = create_cvar("parachute_fallspeed", "100",  FCVAR_ARCHIVE, "<0-2000> Parachute fallspeed. Default: 80");
   cvar_noaccel   = create_cvar("parachute_noaccel",   "0",   FCVAR_ARCHIVE, "<0|1> Disable speed gain on parachute. Default: 0");

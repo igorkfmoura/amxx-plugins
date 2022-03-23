@@ -34,7 +34,7 @@ new Float:sv_gravity;
 
 public plugin_init()
 {
-  register_plugin(PLUGIN, VERSION, AUTHOR, URL)
+  register_plugin(PLUGIN, VERSION, AUTHOR);
   
   bind_pcvar_num(create_cvar("amx_maxjumps", "1", _, "<int> maximum number of airjumps", true, 0.0), maxjumps);
   bind_pcvar_num(create_cvar("amx_airjumplikebhop", "1", _, "<bool> Treat jump horizontal speed as bhop"), airjumplikebhop);

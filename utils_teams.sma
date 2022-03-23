@@ -32,7 +32,7 @@ static deaths[MAX_PLAYERS + 1];
 
 public plugin_init() 
 {
-  register_plugin(PLUGIN, VERSION, AUTHOR, URL);
+  register_plugin(PLUGIN, VERSION, AUTHOR);
   
   // msgid_teamscore = get_user_msgid("TeamScore");
   

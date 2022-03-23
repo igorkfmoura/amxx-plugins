@@ -52,7 +52,7 @@ public plugin_precache( )
 
 public plugin_init()
 {
-  register_plugin(PLUGIN, VERSION, AUTHOR, URL);
+  register_plugin(PLUGIN, VERSION, AUTHOR);
   
   RegisterHam(Ham_Spawn,  "player", "event_player_spawn",  .Post = true)
   RegisterHam(Ham_Killed, "player", "event_player_killed", .Post = true);

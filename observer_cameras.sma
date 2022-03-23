@@ -65,7 +65,7 @@ public plugin_cfg()
 
 public plugin_init()
 {
-  register_plugin(PLUGIN, VERSION, AUTHOR, URL);
+  register_plugin(PLUGIN, VERSION, AUTHOR);
   
   menu_check_max_callback_id     = menu_makecallback("menu_check_max_callback");
   menu_check_enabled_callback_id = menu_makecallback("menu_check_enabled_callback");

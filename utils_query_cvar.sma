@@ -18,7 +18,7 @@
 
 public plugin_init()
 {
-  register_plugin(PLUGIN, VERSION, AUTHOR, URL);
+  register_plugin(PLUGIN, VERSION, AUTHOR);
   
   register_clcmd("query", "cmd_query", ADMIN_PERMISSION, USAGE);
 }
