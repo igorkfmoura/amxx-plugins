@@ -10,7 +10,7 @@
 #include <xs>
 
 #define PLUGIN  "Advanced Observer"
-#define VERSION "0.6.3"
+#define VERSION "0.6.4"
 #define AUTHOR  "lonewolf"
 #define URL     "https://github.com/igorkelvin/amxx-plugins"
 
@@ -69,6 +69,18 @@ new player_aimed[MAX_PLAYERS+1];
 new last_target[MAX_PLAYERS+1];
 
 new bool:player_fixangle[MAX_PLAYERS+1];
+
+enum FlagEvent
+{
+  FLAG_STOLEN = 0,
+  FLAG_PICKED,
+  FLAG_DROPPED,
+  FLAG_MANUALDROP,
+  FLAG_RETURNED,
+  FLAG_CAPTURED,
+  FLAG_AUTORETURN,
+  FLAG_ADMINRETURN
+};
 
 enum Direction
 {
@@ -1167,6 +1179,30 @@ public task_find_flag_holders(task_id) // jctf_base.sma
   set_task(0.5, "task_check_spec_aiming", task_id+1, .flags = "b");
 }
 
+
+public jctf_flag(FlagEvent:event, target, team, bool:is_assist)
+{
+  if (!camera_enabled_bits || ((event != FLAG_STOLEN) && (event != FLAG_PICKED)) || !is_user_connected(target) || !is_user_alive(target))
+  {
+    return;
+  }
+
+  for (new id = 1; id <= MaxClients; ++id)
+  {
+    if (is_user_connected(id) && USER_ENABLED(id) && !is_user_alive(id))
+    {
+      observer_set_mode(id, OBS_IN_EYE);
+    
+      new spectated = entity_get_int(id, EV_INT_iuser1);
+      if (spectated != target)
+      {
+        observer_find_next_player(id, _, target);
+      }
+      // camera_follow_flag(id, flag);
+      // client_print(id, print_chat, "id: %d, event: %d, target: %d, flag: %d", id, event, target, flag);
+    }
+  }
+}
 
 public task_check_spec_aiming(task_id)
 {
