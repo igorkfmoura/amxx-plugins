@@ -10,7 +10,7 @@
 #include <xs>
 
 #define PLUGIN  "Enhanced Parachute Lite"
-#define VERSION "0.1"
+#define VERSION "0.2"
 #define AUTHOR  "lonewolf"
 #define URL     "https://github.com/igorkelvin/amxx-plugins"
 
@@ -76,6 +76,10 @@ public client_cmdStart(id)
     if (!(flags & FL_ONGROUND))
     {
       user_gravity_old[id] = entity_get_float(id, EV_FL_gravity);
+      if ((user_gravity_old[id] < 0.00000001) || (user_gravity_old[id] > 99999999.9)) // solve conflict with "frostnades.amxx"
+      {
+        user_gravity_old[id] = 1.0;
+      }
       in_parachute[id] = true;
     }
   }
