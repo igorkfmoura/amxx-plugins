@@ -1,3 +1,5 @@
+// Note: work in progress, I recommend https://github.com/igorkelvin/amxx-plugins#advanced-observer
+
 #include <amxmodx>
 #include <engine>
 #include <reapi>
@@ -384,7 +386,7 @@ public CBasePlayer_Killed_Post(victim, killer)
 
     for (new id = 1; id <= MAX_PLAYERS; ++id)
     {
-        if (BIT_PL_IS_SET(cfg[ENABLED_BITS], id) && is_user_connected(id) && !is_user_alive(id))
+        if (BIT_PL_IS_SET(cfg[ENABLED_BITS], id) && is_user_connected(id) && !is_user_alive(id) && (get_entvar(id, var_iuser1) == OBS_NONE))
         {
             new iuser2 = get_entvar(id, var_iuser2);
             if (iuser2 == victim)
