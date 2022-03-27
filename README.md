@@ -14,6 +14,7 @@ Plugins made for [Counter Strike 1.6](https://store.steampowered.com/app/10/Coun
 * [Enhanced Flashbang Reapi](#enhanced-flashbang-reapi)
 * [Enhanced MultiJump](#enhanced-multiJump) 
 * [Enhanced Parachute Lite](#enhanced-parachute-lite) 
+* [Fix FPS Speed](#fix-fps-speed)
 * [Maxspeed](#maxspeed) 
 * [MOTD Rules](#motd-rules)
 * [Observer Cameras](#observer-cameras) 
@@ -143,6 +144,17 @@ Parachute plugin based on CSRevo's [Parachute Lite](https://www.csrevo.com/2019/
 | parachute_fallspeed | 100 | Parachute fallspeed.<br/>`0 - 2000` fallspeed in units/s |
 | parachute_noaccel | 0 | Acceleration behavior on parachute.<br/>`0` normal speed behavior<br/>`1` player is unable to gain speed while using parachute|
 | parachute_maxspeed | 2000 | Parachute maximum speed.<br/>`0 - 2000` player's maximum speed while using parachute |
+
+### [Fix FPS Speed](./fix_fps_speed.sma)
+
+#### WORK IN PROGRESS!
+
+Plugin to fix the unfair acceleration on clients with high FPS. Works good on ```sv_airaccelerate 100``` and could be enough for some servers, but I am still working on calculations. Feedback appreciated.
+
+| Cvar | Default | Description |
+| --- | --- | --- |
+| amx_fix_fps_speed | 1 | FPS Speed fix behavior<br/>`0` Disabled, default speed<br/>`1` Enabled |
+
 
 ### [Maxspeed](./maxspeed.sma)
 

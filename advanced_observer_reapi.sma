@@ -1,4 +1,5 @@
-// Note: work in progress, I recommend https://github.com/igorkelvin/amxx-plugins#advanced-observer
+// Note 1: work in progress, I recommend https://github.com/igorkelvin/amxx-plugins#advanced-observer
+// Note 2: this plugin only works in latest versions of amxmodx, reapi and regamedll.
 
 #include <amxmodx>
 #include <engine>
