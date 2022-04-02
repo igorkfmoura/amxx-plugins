@@ -10,6 +10,7 @@ Plugins made for [Counter Strike 1.6](https://store.steampowered.com/app/10/Coun
 * [Advanced Observer Reapi](#advanced-observer-reapi) 
 * [Aim Precision](#aim-precision) 
 * [Aim Trainer](#aim-trainer) 
+* [Anti Duck Scroll](#anti-duck-scroll) 
 * [Enhanced Auto Demo](#enhanced-auto-demo)
 * [Enhanced Flashbang Reapi](#enhanced-flashbang-reapi)
 * [Enhanced MultiJump](#enhanced-multiJump) 
@@ -77,6 +78,14 @@ Tracks user's Deagle shot precision and timing, informing if shot was in perfect
 | Command | Description |
 | --- | --- |
 |say /aim | Enable/disable AimTrainer info. |
+
+### [Anti Duck Scroll](./anti_duck_scroll.sma)
+
+Anti duck scroll plugin. 
+
+| Cvar | Default | Description |
+| --- | --- | --- |
+| amx_dd_delay | 30.0 | Maximum delay to be counted as a scroll double duck. Values above ```50.0``` may impact double duck with ```ctrl``` |
 
 ### [Enhanced Auto Demo](./enhanced_auto_demo.sma)
 
