@@ -85,7 +85,7 @@ Anti duck scroll plugin.
 
 | Cvar | Default | Description |
 | --- | --- | --- |
-| amx_dd_delay | 30.0 | Maximum delay to be counted as a scroll double duck. Values above ```50.0``` may impact double duck with ```ctrl``` |
+| amx_dd_delay | 20.0 | Maximum delay to be counted as a scroll double duck. Setting bigger values than default may impact double duck with ```ctrl``` |
 
 ### [Enhanced Auto Demo](./enhanced_auto_demo.sma)
 
